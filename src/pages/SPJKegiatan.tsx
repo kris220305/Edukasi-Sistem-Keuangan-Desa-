@@ -478,8 +478,6 @@ export default function SPJKegiatan() {
                   <Input className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.nama} onChange={e => setBuktiForm({ ...buktiForm, nama: e.target.value, penerima: e.target.value })} /></div>
                 <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Jumlah</Label>
                   <Input type="number" className="h-7 text-[11px] text-right" readOnly={buktiMode === "view"} value={buktiForm.jumlah || ""} onChange={e => setBuktiForm({ ...buktiForm, jumlah: Number(e.target.value) })} /></div>
-                <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Alamat</Label>
-                  <Input className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.alamat} onChange={e => setBuktiForm({ ...buktiForm, alamat: e.target.value })} /></div>
               </div>
               <ActionBar onTambah={handleTambahBukti}
                 onUbah={() => { if (!selectedBuktiId) { toast.error("Pilih kwitansi"); return; } setBuktiMode("edit"); }}

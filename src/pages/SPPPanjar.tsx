@@ -257,12 +257,6 @@ export default function SPPPanjar() {
                       <Input className="h-7 text-[11px]" value={mode !== "view" ? form.penerimaPanjar : ""} readOnly={mode === "view"} onChange={e => setForm({ ...form, penerimaPanjar: e.target.value })} /></div>
                     <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Nama</Label>
                       <Input className="h-7 text-[11px]" value={mode !== "view" ? form.nama : ""} readOnly={mode === "view"} onChange={e => setForm({ ...form, nama: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Kode Bank</Label>
-                      <Input className="h-7 text-[11px]" value={mode !== "view" ? form.kodeBank : ""} readOnly={mode === "view"} onChange={e => setForm({ ...form, kodeBank: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">No Rek Bank</Label>
-                      <Input className="h-7 text-[11px]" value={mode !== "view" ? form.noRekBank : ""} readOnly={mode === "view"} onChange={e => setForm({ ...form, noRekBank: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Nama Bank</Label>
-                      <Input className="h-7 text-[11px]" value={mode !== "view" ? form.namaBank : ""} readOnly={mode === "view"} onChange={e => setForm({ ...form, namaBank: e.target.value })} /></div>
                   </div>
                 </div>
               </div>

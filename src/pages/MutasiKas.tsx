@@ -96,14 +96,12 @@ export default function MutasiKas() {
                 <th className="px-3 py-2 text-center border-b border-border/60">Jenis</th>
                 <th className="px-3 py-2 text-left border-b border-border/60">Uraian</th>
                 <th className="px-3 py-2 text-right border-b border-border/60">Jumlah</th>
-                <th className="px-3 py-2 text-left border-b border-border/60">Rekening</th>
-                <th className="px-3 py-2 text-left border-b border-border/60">Nama Bank</th>
                 <th className="px-3 py-2 text-center border-b border-border/60">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {state.mutasiKas.length === 0 ? (
-                <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Belum ada data</td></tr>
+                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Belum ada data</td></tr>
               ) : state.mutasiKas.map(item => (
                 <tr key={item.id} className="border-b border-border/40 hover:bg-muted/30 text-[11px]">
                   <td className="px-3 py-2">{item.tanggal}</td>
@@ -115,8 +113,6 @@ export default function MutasiKas() {
                   </td>
                   <td className="px-3 py-2 max-w-[200px] truncate">{item.uraian}</td>
                   <td className="px-3 py-2 text-right font-medium">{item.jumlah.toLocaleString('id-ID')}</td>
-                  <td className="px-3 py-2">{item.rekening}</td>
-                  <td className="px-3 py-2">{item.namaBank}</td>
                   <td className="px-3 py-2 text-center">
                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(item.id)}>
                       <Trash2 size={14} />
@@ -146,8 +142,6 @@ export default function MutasiKas() {
               </div>
               <div className="md:col-span-2"><Label className="text-[11px]">Uraian</Label><Input value={form.uraian} onChange={e => setForm({...form, uraian: e.target.value})} className="text-[11px] h-8" /></div>
               <div><Label className="text-[11px]">Jumlah</Label><Input type="number" value={form.jumlah} onChange={e => setForm({...form, jumlah: Number(e.target.value)})} className="text-[11px] h-8 font-medium" /></div>
-              <div><Label className="text-[11px]">Rekening Bank</Label><Input value={form.rekening} onChange={e => setForm({...form, rekening: e.target.value})} className="text-[11px] h-8" /></div>
-              <div><Label className="text-[11px]">Nama Bank</Label><Input value={form.namaBank} onChange={e => setForm({...form, namaBank: e.target.value})} className="text-[11px] h-8" /></div>
             </div>
             <div className="flex gap-2 pt-2 border-t mt-4">
               <Button size="sm" onClick={handleSave} className="h-8 text-[11px]">Simpan Mutasi</Button>

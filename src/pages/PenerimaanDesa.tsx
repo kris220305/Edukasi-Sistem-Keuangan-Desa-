@@ -406,14 +406,6 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                   )}
                 </div>
                 <div>
-                  <Label className="text-[10px]">Alamat</Label>
-                  {mode !== "view" ? (
-                    <Input value={form.alamat} onChange={e => setForm({ ...form, alamat: e.target.value })} className="h-7 text-[10px]" />
-                  ) : (
-                    <Input value={selectedItem?.alamat || ""} readOnly className="h-7 text-[10px] bg-muted" />
-                  )}
-                </div>
-                <div>
                   <Label className="text-[10px]">Ttd</Label>
                   {mode !== "view" ? (
                     <Input value={form.ttd} onChange={e => setForm({ ...form, ttd: e.target.value })} className="h-7 text-[10px]" />
@@ -439,65 +431,6 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
                 <Input value={selectedItem?.uraian || ""} readOnly className="h-8 text-xs bg-muted" />
               )}
             </div>
-
-            {jenis === "bank" && (
-              <>
-                <fieldset className="border rounded p-2 col-span-2">
-                  <legend className="text-[10px] font-semibold px-1">Bank Penerima</legend>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-[10px]">KPPN</Label>
-                      {mode !== "view" ? (
-                        <Input value={form.kppn || ""} onChange={e => setForm({ ...form, kppn: e.target.value })} className="h-7 text-[10px]" />
-                      ) : (
-                        <Input value={selectedItem?.kppn || ""} readOnly className="h-7 text-[10px] bg-muted" />
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-[10px]">Rekening</Label>
-                      {mode !== "view" ? (
-                        <Input value={form.rekening || ""} onChange={e => setForm({ ...form, rekening: e.target.value })} className="h-7 text-[10px]" />
-                      ) : (
-                        <Input value={selectedItem?.rekening || ""} readOnly className="h-7 text-[10px] bg-muted" />
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-[10px]">Nama Bank</Label>
-                      {mode !== "view" ? (
-                        <Input value={form.namaBank || ""} onChange={e => setForm({ ...form, namaBank: e.target.value })} className="h-7 text-[10px]" />
-                      ) : (
-                        <Input value={selectedItem?.namaBank || ""} readOnly className="h-7 text-[10px] bg-muted" />
-                      )}
-                    </div>
-                  </div>
-                </fieldset>
-              </>
-            )}
-
-            {jenis === "tunai" && (
-              <fieldset className="border rounded p-2 col-span-2">
-                <legend className="text-[10px] font-semibold px-1">Bank Penerima</legend>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-[10px]">Rekening</Label>
-                    {mode !== "view" ? (
-                      <Input value={form.rekening || ""} onChange={e => setForm({ ...form, rekening: e.target.value })} className="h-7 text-[10px]" />
-                    ) : (
-                      <Input value={selectedItem?.rekening || ""} readOnly className="h-7 text-[10px] bg-muted" />
-                    )}
-                  </div>
-                  <div>
-                    <Label className="text-[10px]">Nama Bank</Label>
-                    {mode !== "view" ? (
-                      <Input value={form.namaBank || ""} onChange={e => setForm({ ...form, namaBank: e.target.value })} className="h-7 text-[10px]" />
-                    ) : (
-                      <Input value={selectedItem?.namaBank || ""} readOnly className="h-7 text-[10px] bg-muted" />
-                    )}
-                  </div>
-                </div>
-              </fieldset>
-            )}
-
             <div>
               <Label className="text-xs">Jumlah</Label>
               {mode !== "view" ? (

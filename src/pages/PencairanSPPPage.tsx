@@ -242,12 +242,6 @@ export default function PencairanSPPPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-[11px] w-20 shrink-0">Nama Bank</Label>
-                      <Input className="h-7 text-[11px]" readOnly={mode === "view"}
-                        value={mode !== "view" ? form.namaBank : "BPD Simulasi"}
-                        onChange={e => setForm({...form, namaBank: e.target.value})} />
-                    </div>
-                    <div className="flex items-center gap-2">
                       <Label className="text-[11px] w-20 shrink-0">CMS ID</Label>
                       <Input className="h-7 text-[11px]" readOnly={mode === "view"}
                         value={mode !== "view" ? form.cmsId : ""}

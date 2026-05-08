@@ -278,18 +278,6 @@ export default function PenyetoranPajak() {
                         onChange={e => setForm({...form, namaWP: e.target.value})} />
                     </div>
                     <div className="flex items-center gap-2">
-                      <Label className="text-[11px] w-20 shrink-0">Alamat WP</Label>
-                      <Input className="h-7 text-[11px]" readOnly={mode === "view"}
-                        value={mode !== "view" ? form.alamatWP : ""}
-                        onChange={e => setForm({...form, alamatWP: e.target.value})} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Label className="text-[11px] w-20 shrink-0">NPWP</Label>
-                      <Input className="h-7 text-[11px]" readOnly={mode === "view"}
-                        value={mode !== "view" ? form.npwp : ""}
-                        onChange={e => setForm({...form, npwp: e.target.value})} />
-                    </div>
-                    <div className="flex items-center gap-2">
                       <Label className="text-[11px] w-20 shrink-0">Ttd</Label>
                       <Input className="h-7 text-[11px]" readOnly={mode === "view"}
                         value={mode !== "view" ? form.ttd : ""}

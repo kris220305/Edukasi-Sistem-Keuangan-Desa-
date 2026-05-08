@@ -369,16 +369,6 @@ export default function SPPDefinitif() {
                     <p className="text-[10px] font-semibold text-muted-foreground mb-1">Penerima</p>
                     <div className="flex items-center gap-2"><Label className="text-[11px] w-20 shrink-0">Nama</Label>
                       <Input className="h-7 text-[11px]" value={buktiMode !== "view" ? buktiForm.nama : selectedBukti?.nama || ""} readOnly={buktiMode === "view"} onChange={e => setBuktiForm({ ...buktiForm, nama: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-20 shrink-0">Alamat</Label>
-                      <Input className="h-7 text-[11px]" value={buktiMode !== "view" ? buktiForm.alamat : selectedBukti?.alamat || ""} readOnly={buktiMode === "view"} onChange={e => setBuktiForm({ ...buktiForm, alamat: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-20 shrink-0">Kode Bank</Label>
-                      <Input className="h-7 text-[11px]" value={buktiMode !== "view" ? buktiForm.kodeBank : ""} readOnly={buktiMode === "view"} onChange={e => setBuktiForm({ ...buktiForm, kodeBank: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-20 shrink-0">No Rek Bank</Label>
-                      <Input className="h-7 text-[11px]" value={buktiMode !== "view" ? buktiForm.noRekBank : ""} readOnly={buktiMode === "view"} onChange={e => setBuktiForm({ ...buktiForm, noRekBank: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-20 shrink-0">Nama Bank</Label>
-                      <Input className="h-7 text-[11px]" value={buktiMode !== "view" ? buktiForm.namaBank : ""} readOnly={buktiMode === "view"} onChange={e => setBuktiForm({ ...buktiForm, namaBank: e.target.value })} /></div>
-                    <div className="flex items-center gap-2"><Label className="text-[11px] w-20 shrink-0">NPWP</Label>
-                      <Input className="h-7 text-[11px]" value={buktiMode !== "view" ? buktiForm.npwp : ""} readOnly={buktiMode === "view"} onChange={e => setBuktiForm({ ...buktiForm, npwp: e.target.value })} /></div>
                   </div>
                 </div>
               </div>

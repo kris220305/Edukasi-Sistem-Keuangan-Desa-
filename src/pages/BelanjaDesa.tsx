@@ -44,6 +44,7 @@ export default function BelanjaDesa() {
     state.belanja = newItems;
     saveState(state, true);
     setItems(newItems);
+  };
   const filteredByBidang = selectedBidang ? items.filter(i => i.kodeBidang === selectedBidang) : items;
   const filteredItems = selectedKegiatan ? filteredByBidang.filter(i => i.kodeKegiatan === selectedKegiatan) : filteredByBidang;
   const selectedItem = items.find(i => i.id === selectedId);

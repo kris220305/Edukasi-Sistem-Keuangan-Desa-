@@ -16,7 +16,9 @@ import { toast } from "sonner";
 type Mode = "view" | "tambah" | "ubah";
 type ActiveTab = "silpa" | "tunai" | "bank";
 
-const [items, setItems] = useState<SilpaItem[]>([]);
+// ===================== SiLPA TAB =====================
+function SilpaTab() {
+  const [items, setItems] = useState<SilpaItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
 
@@ -40,6 +42,8 @@ const [items, setItems] = useState<SilpaItem[]>([]);
     state.silpa = newItems;
     saveState(state, true);
     setItems(newItems);
+  };
+  
   const selectedItem = items.find(i => i.id === selectedId);
   const totalDebet = (selectedItem || (mode !== "view" ? { rincian: form.rincian } : null))?.rincian.reduce((s, r) => s + r.debet, 0) || 0;
   const totalKredit = (selectedItem || (mode !== "view" ? { rincian: form.rincian } : null))?.rincian.reduce((s, r) => s + r.kredit, 0) || 0;
@@ -259,7 +263,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
   const emptyForm: Omit<PenerimaanItem, "id"> = {
     jenis, tanggal: "", noBukti: "", uraian: "", jumlah: 0,
-    kodeRekening: "", namaRekening: "", penyetor: "", nama: "", alamat: "", ttd: "",
+    kodeRekening: "", namaRekening: "", penyetor: "", nama: "", ttd: "",
     rekening: "", namaBank: "", kppn: "", rincian: [],
   };
   const [form, setForm] = useState(emptyForm);

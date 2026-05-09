@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type JurnalUmumItem, type JurnalRincian } from "@/data/app-state";
-import { getTahunAnggaran } from "@/lib/financial-engine";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

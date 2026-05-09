@@ -35,12 +35,6 @@ export default function SPJKegiatan() {
   const [activeMenu, setActiveMenu] = useState<MainMenu>("spj_panjar");
   const [activeSubTab, setActiveSubTab] = useState<SPJSubTab>("spj");
 
-  useEffect(() => {
-    const onUpd = () => setState(loadState());
-    window.addEventListener("siskeudes:state-updated", onUpd);
-    return () => window.removeEventListener("siskeudes:state-updated", onUpd);
-  }, []);
-
   const persist = (next: ReturnType<typeof loadState>) => {
     saveState(next);
     setState(next);
@@ -66,7 +60,7 @@ export default function SPJKegiatan() {
   // Kwitansi sub-form
   const [buktiMode, setBuktiMode] = useState<Mode>("view");
   const [selectedBuktiId, setSelectedBuktiId] = useState<string | null>(null);
-  const [buktiForm, setBuktiForm] = useState<Omit<BuktiTransaksi, "id" | "potonganPajak">>({ tanggal: new Date().toISOString().slice(0, 10), noBukti: "", keterangan: "", jumlah: 0, penerima: "", nama: "", alamat: "" });
+  const [buktiForm, setBuktiForm] = useState<Omit<BuktiTransaksi, "id" | "potonganPajak">>({ tanggal: new Date().toISOString().slice(0, 10), noBukti: "", keterangan: "", jumlah: 0, penerima: "", nama: "" });
 
   // Potongan sub-form
   const [potMode, setPotMode] = useState<Mode>("view");
@@ -167,7 +161,7 @@ export default function SPJKegiatan() {
   const handleTambahBukti = () => {
     if (!selectedSPJ) { toast.error("Pilih SPJ"); return; }
     setBuktiMode("add"); setSelectedBuktiId(null);
-    setBuktiForm({ tanggal: new Date().toISOString().slice(0, 10), noBukti: generateNoBukti(), keterangan: "", jumlah: 0, penerima: "", nama: "", alamat: "" });
+    setBuktiForm({ tanggal: new Date().toISOString().slice(0, 10), noBukti: generateNoBukti(), keterangan: "", jumlah: 0, penerima: "", nama: "" });
   };
   const handleSimpanBukti = () => {
     if (!selectedSPJ) return;
@@ -486,7 +480,7 @@ export default function SPJKegiatan() {
                           ) : (selectedSPJ.buktiKwitansi || []).map(b => (
                             <TableRow key={b.id}
                               className={`cursor-pointer text-[11px] ${selectedBuktiId === b.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                              onClick={() => { setSelectedBuktiId(b.id); setBuktiMode("view"); setBuktiForm({ tanggal: b.tanggal, noBukti: b.noBukti, keterangan: b.keterangan, jumlah: b.jumlah, penerima: b.penerima || "", nama: b.nama || "", alamat: b.alamat || "" }); }}>
+                              onClick={() => { setSelectedBuktiId(b.id); setBuktiMode("view"); setBuktiForm({ tanggal: b.tanggal, noBukti: b.noBukti, keterangan: b.keterangan, jumlah: b.jumlah, nama: b.nama || "", penerima: b.penerima || "" }); }}>
                               <TableCell>{b.tanggal}</TableCell>
                               <TableCell className="font-mono">{b.noBukti}</TableCell>
                               <TableCell className="max-w-[200px] truncate">{b.keterangan}</TableCell>
@@ -638,12 +632,6 @@ export default function SPJKegiatan() {
             )}
 
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
         </div>
       </div>
     </div>

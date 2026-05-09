@@ -86,14 +86,24 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
   }, [navigate]);
 
   useEffect(() => {
+    let mounted = true;
+    const timeout = setTimeout(() => {
+      if (mounted && checking) {
+        console.warn("Site lock check timed out, failing open.");
+        setChecking(false);
+      }
+    }, 10000); // 10s global fallback
+
     const check = async () => {
       try {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          setChecking(false);
+          if (mounted) setChecking(false);
           return;
         }
         
         const settings = await getSiteSettings();
+        if (!mounted) return;
+
         if (settings?.is_locked) {
           setLocked(true);
           setMaxReached(false);
@@ -102,6 +112,8 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
 
         if (settings?.max_users && settings.max_users > 0) {
           const active = await getActiveSessions(5);
+          if (!mounted) return;
+
           const sessionId = getSessionId();
           const isExisting = active.some((s) => s.session_id === sessionId);
           if (!isExisting && active.length >= settings.max_users) {
@@ -115,17 +127,20 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         setMaxReached(false);
       } catch (error) {
         console.error("Site lock check failed:", error);
-        // Fail open so the app still loads if API is down
-        setLocked(false);
-        setMaxReached(false);
+        if (mounted) {
+          setLocked(false);
+          setMaxReached(false);
+        }
       } finally {
-        setChecking(false);
+        if (mounted) {
+          setChecking(false);
+          clearTimeout(timeout);
+        }
       }
     };
 
     check();
-    const interval = setInterval(check, SITE_CHECK_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => { mounted = false; clearTimeout(timeout); };
   }, []);
 
   // Heartbeat

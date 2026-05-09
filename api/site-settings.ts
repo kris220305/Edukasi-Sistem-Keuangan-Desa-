@@ -8,6 +8,7 @@ export default async function handler(req: any, res: any) {
     if (!supabase) {
       return sendJson(res, 500, { error: "Supabase credentials missing in Vercel environment variables." });
     }
+    if (req.method === "GET") {
       const { data, error } = await supabase
         .from("site_settings")
         .select("*")

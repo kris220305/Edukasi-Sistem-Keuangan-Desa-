@@ -11,7 +11,19 @@ function getEnv(name: string): string {
 
 export function getSupabaseAdmin() {
   const url = process.env.VITE_SUPABASE_URL || "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const anonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
+
+  // Logging mask untuk debugging di Vercel Logs (Aman, tidak membocorkan key penuh)
+  console.log("Supabase Connection Check:", {
+    hasUrl: !!url,
+    urlPrefix: url.substring(0, 10),
+    hasServiceRole: !!serviceRoleKey,
+    hasAnonKey: !!anonKey,
+    envCount: Object.keys(process.env).filter(k => k.includes("SUPABASE")).length
+  });
+
+  const key = serviceRoleKey || anonKey;
 
   if (!url || !key) {
     return null;

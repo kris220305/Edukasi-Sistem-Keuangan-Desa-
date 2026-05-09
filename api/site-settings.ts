@@ -6,7 +6,13 @@ export default async function handler(req: any, res: any) {
   try {
     const supabase = getSupabaseAdmin();
     if (!supabase) {
-      return sendJson(res, 500, { error: "Supabase credentials missing in Vercel environment variables." });
+      return sendJson(res, 500, { 
+        error: "Supabase credentials missing.",
+        details: {
+          url: !!process.env.VITE_SUPABASE_URL,
+          key: !!(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY)
+        }
+      });
     }
     if (req.method === "GET") {
       const { data, error } = await supabase

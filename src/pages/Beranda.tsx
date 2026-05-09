@@ -72,7 +72,7 @@ export default function Beranda() {
 
         {/* Tagline */}
         <p 
-          className={`mt-5 italic max-w-md mx-auto drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-700 delay-[900ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+          className={`mt-5 italic max-w-md mx-auto drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] transition-all duration-700 [transition-delay:900ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
           style={{ 
             color: '#ffffff', 
             fontFamily: '"Times New Roman", Times, serif', 
@@ -85,7 +85,7 @@ export default function Beranda() {
         </p>
 
         {/* Demo Data Buttons */}
-        <div className={`mt-4 flex flex-col items-center gap-2 transition-all duration-700 delay-[1000ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+        <div className={`mt-4 flex flex-col items-center gap-2 transition-all duration-700 [transition-delay:1000ms] ${loaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <Button
             variant="outline"
             size="sm"
@@ -105,7 +105,7 @@ export default function Beranda() {
             className="gap-2 bg-destructive/10 backdrop-blur-md border-destructive/20 hover:bg-destructive/20"
             style={{ color: '#ff0000' }}
             onClick={() => {
-              saveState({
+              saveState({ 
                 pendapatan: [], belanja: [], pembiayaan: [], penerimaan: [],
                 silpa: [], spp: [], pencairan: [], penyetoranPajak: [],
                 saldoAwal: [], spjPanjar: [], jurnalUmum: [], mutasiKas: [],
@@ -120,14 +120,14 @@ export default function Beranda() {
         </div>
 
         {/* Year badge */}
-        <div className={`mt-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all duration-700 delay-[1100ms] ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+        <div className={`mt-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all duration-700 [transition-delay:1100ms] ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
           <span className="text-xs text-foreground/90 font-medium">Tahun Anggaran {getTahunAnggaran()}</span>
         </div>
       </div>
 
       {/* Bottom copyright */}
-      <div className={`absolute bottom-4 left-0 right-0 text-center transition-all duration-700 delay-[1300ms] ${loaded ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-4 left-0 right-0 text-center transition-all duration-700 [transition-delay:1300ms] ${loaded ? 'opacity-100' : 'opacity-0'}`}>
         <p className="text-[10px] text-[hsl(0,0%,80%)] drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
           ​
         </p>

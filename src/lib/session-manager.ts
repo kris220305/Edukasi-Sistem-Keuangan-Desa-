@@ -3,6 +3,47 @@ import { supabase } from "@/integrations/supabase/client";
 const SESSION_KEY = "siskeudes_session_id";
 const DEFAULT_MAX_GROUP_MEMBERS = 10;
 const DEFAULT_MIN_GROUP_MEMBERS = 1;
+const SITE_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
+
+type SessionUpsertInput = {
+  user_name?: string;
+  village_id?: string;
+  village_name?: string;
+  form_progress?: Record<string, boolean>;
+  form_data?: Record<string, unknown>;
+  work_mode?: string;
+  group_id?: string | null;
+};
+
+type UserSessionRecord = {
+  session_id: string;
+  form_data?: unknown;
+  form_progress?: unknown;
+  village_id?: string;
+  [key: string]: unknown;
+};
+
+async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `API request failed with status ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
 
 // ============ VILLAGE GROUP LIMITS (admin-controlled, realtime-synced) ============
 
@@ -59,70 +100,54 @@ export function getSessionId(): string {
   return id;
 }
 
-export async function upsertSession(data: {
-  user_name?: string;
-  village_id?: string;
-  village_name?: string;
-  form_progress?: Record<string, boolean>;
-  form_data?: Record<string, unknown>;
-  work_mode?: string;
-  group_id?: string | null;
-}) {
+async function upsertSessionDirect(data: SessionUpsertInput) {
   const sessionId = getSessionId();
-
-  const { data: existing } = await supabase
-    .from("user_sessions")
-    .select("id, form_progress")
-    .eq("session_id", sessionId)
-    .maybeSingle();
-
-  const updateObj: Record<string, unknown> = {
-    last_active: new Date().toISOString(),
-  };
-  if (data.user_name !== undefined) updateObj.user_name = data.user_name;
-  if (data.village_id !== undefined) updateObj.village_id = data.village_id;
-  if (data.village_name !== undefined) updateObj.village_name = data.village_name;
-  if (data.form_data !== undefined) updateObj.form_data = JSON.parse(JSON.stringify(data.form_data));
-  if (data.work_mode !== undefined) updateObj.work_mode = data.work_mode;
-  if (data.group_id !== undefined) updateObj.group_id = data.group_id;
-
-  if (existing) {
-    const mergedProgress = {
-      ...(typeof existing.form_progress === 'object' && existing.form_progress !== null ? existing.form_progress : {}),
-      ...(data.form_progress || {}),
-    };
-    updateObj.form_progress = mergedProgress as unknown;
-    await supabase
+  let existingProgress: Record<string, unknown> = {};
+  if (data.form_progress !== undefined) {
+    const { data: existing } = await supabase
       .from("user_sessions")
-      .update(updateObj as never)
-      .eq("session_id", sessionId);
-  } else {
-    await supabase.from("user_sessions").insert([{
-      session_id: sessionId,
-      user_name: data.user_name || "",
-      village_id: data.village_id || "",
-      village_name: data.village_name || "",
-      form_progress: (data.form_progress || {}) as unknown as Record<string, never>,
-      form_data: (data.form_data ? JSON.parse(JSON.stringify(data.form_data)) : {}) as unknown as Record<string, never>,
-      work_mode: data.work_mode || "individual",
-      group_id: data.group_id || null,
-    }]);
+      .select("form_progress")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+    existingProgress =
+      typeof existing?.form_progress === "object" && existing.form_progress !== null
+        ? (existing.form_progress as Record<string, unknown>)
+        : {};
   }
 
-  // If in group mode, push form_data to all group members so they share state
-  if (data.form_data !== undefined) {
-    const groupId = data.group_id ?? localStorage.getItem("siskeudes_group_id");
-    if (groupId) {
-      await supabase
-        .from("user_sessions")
-        .update({ form_data: JSON.parse(JSON.stringify(data.form_data)), last_active: new Date().toISOString() } as never)
-        .eq("group_id", groupId)
-        .neq("session_id", sessionId);
-    }
+  const payload: Record<string, unknown> = {
+    session_id: sessionId,
+    last_active: new Date().toISOString(),
+  };
+  if (data.user_name !== undefined) payload.user_name = data.user_name;
+  if (data.village_id !== undefined) payload.village_id = data.village_id;
+  if (data.village_name !== undefined) payload.village_name = data.village_name;
+  if (data.form_data !== undefined) payload.form_data = JSON.parse(JSON.stringify(data.form_data));
+  if (data.work_mode !== undefined) payload.work_mode = data.work_mode;
+  if (data.group_id !== undefined) payload.group_id = data.group_id;
+  if (data.form_progress !== undefined) {
+    payload.form_progress = {
+      ...existingProgress,
+      ...data.form_progress,
+    };
+  }
+
+  await supabase.from("user_sessions").upsert(payload as never, { onConflict: "session_id" });
+}
+
+export async function upsertSession(data: SessionUpsertInput) {
+  const sessionId = getSessionId();
+  try {
+    await apiRequest("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ sessionId, payload: data }),
+    });
+  } catch {
+    await upsertSessionDirect(data);
   }
 }
 
-export async function heartbeat() {
+async function heartbeatDirect() {
   const sessionId = getSessionId();
   await supabase
     .from("user_sessions")
@@ -130,42 +155,96 @@ export async function heartbeat() {
     .eq("session_id", sessionId);
 }
 
-export async function getSiteSettings() {
+export async function heartbeat() {
+  const sessionId = getSessionId();
+  try {
+    await apiRequest("/api/sessions", {
+      method: "PATCH",
+      body: JSON.stringify({ sessionId }),
+    });
+  } catch {
+    await heartbeatDirect();
+  }
+}
+
+async function getSiteSettingsDirect() {
   const { data } = await supabase
     .from("site_settings")
     .select("*")
-    .eq("id", "00000000-0000-0000-0000-000000000001")
+    .eq("id", SITE_SETTINGS_ID)
     .single();
   return data;
 }
 
+export async function getSiteSettings() {
+  try {
+    return await apiRequest("/api/site-settings");
+  } catch {
+    return await getSiteSettingsDirect();
+  }
+}
+
 export async function updateSiteSettings(updates: { is_locked?: boolean; max_users?: number }) {
-  await supabase
-    .from("site_settings")
-    .update(updates)
-    .eq("id", "00000000-0000-0000-0000-000000000001");
+  try {
+    await apiRequest("/api/site-settings", {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    });
+  } catch {
+    await supabase
+      .from("site_settings")
+      .update(updates)
+      .eq("id", SITE_SETTINGS_ID);
+  }
 }
 
 export async function getAllSessions() {
-  const { data } = await supabase
-    .from("user_sessions")
-    .select("*")
-    .order("last_active", { ascending: false });
-  return data || [];
+  try {
+    return await apiRequest<UserSessionRecord[]>("/api/sessions?action=all");
+  } catch {
+    const { data } = await supabase
+      .from("user_sessions")
+      .select("*")
+      .order("last_active", { ascending: false });
+    return data || [];
+  }
 }
 
 export async function deleteSession(sessionId: string) {
-  await supabase.from("user_sessions").delete().eq("session_id", sessionId);
+  try {
+    await apiRequest(`/api/sessions?sessionId=${encodeURIComponent(sessionId)}`, {
+      method: "DELETE",
+    });
+  } catch {
+    await supabase.from("user_sessions").delete().eq("session_id", sessionId);
+  }
 }
 
 export async function getActiveSessions(minutesThreshold = 5) {
-  const threshold = new Date(Date.now() - minutesThreshold * 60 * 1000).toISOString();
-  const { data } = await supabase
-    .from("user_sessions")
-    .select("*")
-    .gte("last_active", threshold)
-    .order("last_active", { ascending: false });
-  return data || [];
+  try {
+    return await apiRequest<UserSessionRecord[]>(`/api/sessions?action=active&minutes=${minutesThreshold}`);
+  } catch {
+    const threshold = new Date(Date.now() - minutesThreshold * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from("user_sessions")
+      .select("*")
+      .gte("last_active", threshold)
+      .order("last_active", { ascending: false });
+    return data || [];
+  }
+}
+
+export async function getSessionRecord(sessionId: string): Promise<UserSessionRecord | null> {
+  try {
+    return await apiRequest<UserSessionRecord | null>(`/api/sessions?sessionId=${encodeURIComponent(sessionId)}`);
+  } catch {
+    const { data } = await supabase
+      .from("user_sessions")
+      .select("*")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+    return (data as UserSessionRecord | null) || null;
+  }
 }
 
 export async function trackFormProgress(formKey: string) {

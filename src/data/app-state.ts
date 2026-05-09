@@ -415,6 +415,7 @@ export function mergeStates(local: AppState, remote: Partial<AppState>): AppStat
 // Debounced backend push so a burst of saveState() calls collapses into ONE round-trip.
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingState: AppState | null = null;
+let lastPushedState = "";
 
 function flushPush() {
   pushTimer = null;
@@ -423,7 +424,10 @@ function flushPush() {
   if (!state) return;
   try {
     if (localStorage.getItem('siskeudes_admin_impersonate')) return;
-    const payload = { ...state } as unknown as Record<string, unknown>;
+    const serialized = JSON.stringify(state);
+    if (serialized === lastPushedState) return;
+    lastPushedState = serialized;
+    const payload = JSON.parse(serialized) as Record<string, unknown>;
     localStorage.setItem('siskeudes_last_local_write_at', String(Date.now()));
     void upsertSession({ form_data: payload });
   } catch { /* ignore */ }
@@ -437,7 +441,7 @@ export function saveState(state: AppState) {
 
   pendingState = stamped;
   if (pushTimer) clearTimeout(pushTimer);
-  pushTimer = setTimeout(flushPush, 120);
+  pushTimer = setTimeout(flushPush, 1200);
 }
 
 export function flushSaveStateNow() {

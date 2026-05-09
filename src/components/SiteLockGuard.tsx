@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSiteSettings, getActiveSessions, heartbeat, getSessionId } from "@/lib/session-manager";
-import { supabase } from "@/integrations/supabase/client";
+import { getSiteSettings, getActiveSessions, heartbeat, getSessionId, getSessionRecord } from "@/lib/session-manager";
 import { Lock, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 const ADMIN_BYPASS_PASSWORD = "12345";
+const KICK_CHECK_INTERVAL_MS = 15000;
+const SITE_CHECK_INTERVAL_MS = 60000;
+const HEARTBEAT_INTERVAL_MS = 90000;
 
 // Wipe all user-side data and force them out of the app.
 function wipeLocalUserData() {
@@ -44,13 +46,8 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
       const hadVillage = !!localStorage.getItem("siskeudes_selected_village");
       if (!hadVillage) return;
 
-      const { data, error } = await supabase
-        .from("user_sessions")
-        .select("session_id, form_data, village_id")
-        .eq("session_id", sessionId)
-        .maybeSingle();
-
-      if (cancelled || error) return;
+      const data = await getSessionRecord(sessionId);
+      if (cancelled) return;
 
       // KICKED: server row no longer exists → force user out
       if (!data) {
@@ -79,7 +76,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
       }
     };
 
-    const interval = setInterval(check, 4000);
+    const interval = setInterval(check, KICK_CHECK_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -120,15 +117,17 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     };
 
     check();
-    const interval = setInterval(check, 10000);
+    const interval = setInterval(check, SITE_CHECK_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 
   // Heartbeat
   useEffect(() => {
     if ((locked || maxReached) && !bypassed) return;
-    heartbeat();
-    const interval = setInterval(heartbeat, 30000);
+    void heartbeat();
+    const interval = setInterval(() => {
+      void heartbeat();
+    }, HEARTBEAT_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [locked, maxReached, bypassed]);
 

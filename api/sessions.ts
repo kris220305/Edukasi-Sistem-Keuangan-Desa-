@@ -3,8 +3,9 @@ import { getQueryValue, getSupabaseAdmin, parseBody, sendJson } from "./_lib/sup
 export default async function handler(req: any, res: any) {
   try {
     const supabase = getSupabaseAdmin();
-
-    if (req.method === "GET") {
+    if (!supabase) {
+      return sendJson(res, 500, { error: "Supabase credentials missing in Vercel environment variables." });
+    }
       const action = getQueryValue(req.query?.action);
 
       if (action === "active") {

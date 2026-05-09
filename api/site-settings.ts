@@ -5,8 +5,9 @@ const SITE_SETTINGS_ID = "00000000-0000-0000-0000-000000000001";
 export default async function handler(req: any, res: any) {
   try {
     const supabase = getSupabaseAdmin();
-
-    if (req.method === "GET") {
+    if (!supabase) {
+      return sendJson(res, 500, { error: "Supabase credentials missing in Vercel environment variables." });
+    }
       const { data, error } = await supabase
         .from("site_settings")
         .select("*")

@@ -10,11 +10,11 @@ function getEnv(name: string): string {
 }
 
 export function getSupabaseAdmin() {
-  const url = getEnv("VITE_SUPABASE_URL");
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || getEnv("VITE_SUPABASE_PUBLISHABLE_KEY");
+  const url = process.env.VITE_SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 
   if (!url || !key) {
-    throw new Error(`Missing Supabase credentials (URL: ${!!url}, Key: ${!!key}). Please set environment variables in Vercel dashboard.`);
+    return null;
   }
 
   return createClient(url, key, {

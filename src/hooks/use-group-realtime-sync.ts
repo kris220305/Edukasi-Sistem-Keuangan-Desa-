@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getSessionId } from "@/lib/session-manager";
+import { getSessionId, getActiveSessions } from "@/lib/session-manager";
 import { toast } from "sonner";
 import { loadState, mergeStates, type AppState } from "@/data/app-state";
 
@@ -53,16 +53,13 @@ function applyIncomingState(formData: Record<string, unknown>) {
 }
 
 async function initialPullForGroup(groupId: string, mySessionId: string) {
-  const { data } = await supabase
-    .from("user_sessions")
-    .select("session_id, form_data, last_active")
-    .eq("group_id", groupId)
-    .order("last_active", { ascending: false })
-    .limit(5);
+  const data = await getActiveSessions(60); // Check active in last hour
   if (!data || data.length === 0) return;
+  
   // Pick the most recently active row that's NOT mine and has non-empty form_data
   const candidate = data.find(
     (r) =>
+      r.group_id === groupId &&
       r.session_id !== mySessionId &&
       r.form_data &&
       typeof r.form_data === "object" &&

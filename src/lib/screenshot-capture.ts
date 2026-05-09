@@ -16,6 +16,7 @@ let captureInterval: ReturnType<typeof setInterval> | null = null;
 
 export async function captureAndUpload() {
   if (!hasScreenShareConsent()) return;
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return;
   
   try {
     const canvas = await html2canvas(document.body, {
@@ -33,9 +34,28 @@ export async function captureAndUpload() {
     const sessionId = getSessionId();
     const fileName = `${sessionId}/latest.jpg`;
     
-    await supabase.storage.from("screenshots").upload(fileName, blob, {
-      upsert: true,
-      contentType: "image/jpeg",
+    // Convert blob to base64
+    const reader = new FileReader();
+    const base64Promise = new Promise<string>((resolve) => {
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        resolve(base64.split(',')[1]); // remove data:image/jpeg;base64,
+      };
+      reader.readAsDataURL(blob);
+    });
+    
+    const fileBase64 = await base64Promise;
+
+    await fetch("/api/storage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        fileName,
+        fileBase64,
+        contentType: "image/jpeg",
+      }),
     });
   } catch {
     // Silent fail

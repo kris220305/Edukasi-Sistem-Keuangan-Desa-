@@ -20,9 +20,10 @@ import {
 import { toast } from "sonner";
 import {
   getAllSessions, getActiveSessions, getSiteSettings, updateSiteSettings, deleteSession, getSubmittedReports,
-  getAllVillageGroupLimits, upsertVillageGroupLimit, type VillageGroupLimit,
+  getAllVillageGroupLimits, upsertVillageGroupLimit, type VillageGroupLimit, getAllPdfs,
+  kickAllUsers, deleteAllReports, deleteReport, resetUserProgress, deleteAllPdfs,
+  kickUser, deletePdf,
 } from "@/lib/session-manager";
-import { supabase } from "@/integrations/supabase/client";
 import { getScreenshotUrl } from "@/lib/screenshot-capture";
 import { startImpersonation } from "@/lib/admin-impersonation";
 import { villageProfiles } from "@/data/village-profiles";
@@ -138,28 +139,8 @@ export default function AdminDashboard() {
     setVillageLimits(map);
 
     try {
-      const { data: folders } = await supabase.storage.from("report-pdfs").list("", { limit: 100 });
-      if (folders) {
-        const allPdfs: PdfFile[] = [];
-        for (const folder of folders) {
-          if (folder.id === null && folder.name === ".emptyFolderPlaceholder") continue;
-          const { data: files } = await supabase.storage.from("report-pdfs").list(folder.name, { limit: 50 });
-          if (files) {
-            for (const f of files) {
-              if (f.name.endsWith(".pdf")) {
-                const path = `${folder.name}/${f.name}`;
-                const { data: urlData } = supabase.storage.from("report-pdfs").getPublicUrl(path);
-                allPdfs.push({
-                  name: f.name, fullPath: path, url: urlData.publicUrl,
-                  folder: folder.name, created_at: f.created_at || "",
-                });
-              }
-            }
-          }
-        }
-        allPdfs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setPdfFiles(allPdfs);
-      }
+      const pdfs = await getAllPdfs();
+      setPdfFiles(pdfs);
     } catch { /* ignore */ }
 
     setLoading(false);
@@ -200,26 +181,13 @@ export default function AdminDashboard() {
       title: `Kick User: ${s.user_name || "—"}`,
       description: `User "${s.user_name || s.session_id}" akan langsung dikeluarkan dari sistem dalam beberapa detik. Session, progress, dan data form mereka dihapus permanen — mereka harus membuka link lagi untuk masuk kembali.`,
       action: async () => {
-        // 1. Remove from groups first (FK)
-        if (s.group_id) {
-          await supabase.from("group_members").delete().eq("session_id", s.session_id);
-        }
-        // 2. Delete the session row → triggers kick-detection on user side
-        const { error } = await supabase
-          .from("user_sessions")
-          .delete()
-          .eq("session_id", s.session_id);
-        if (error) {
-          toast.error(`Gagal kick user: ${error.message}`);
-          return;
-        }
-        // 3. Cleanup screenshots
         try {
-          await supabase.storage.from("screenshots").remove([`${s.session_id}.png`]);
-        } catch { /* ignore */ }
-
-        toast.success(`User "${s.user_name || s.session_id}" dikeluarkan. User akan otomatis logout dalam ±4 detik.`);
-        refresh();
+          await kickUser(s.session_id);
+          toast.success(`User "${s.user_name || s.session_id}" dikeluarkan. User akan otomatis logout dalam ±4 detik.`);
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal kick user: ${err.message}`);
+        }
       },
     });
   };
@@ -229,32 +197,13 @@ export default function AdminDashboard() {
       title: "Kick Semua User",
       description: `PERINGATAN: Semua ${sessions.length} user akan langsung dikeluarkan dari sistem dalam beberapa detik. Session, progress, dan data form mereka akan hilang permanen.`,
       action: async () => {
-        // Bulk delete group members + groups + sessions
-        const { error: gmErr } = await supabase
-          .from("group_members")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        const { error: gErr } = await supabase
-          .from("groups")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        const { error: sErr } = await supabase
-          .from("user_sessions")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-
-        if (gmErr || gErr || sErr) {
-          toast.error(`Gagal hapus sebagian data: ${(sErr || gErr || gmErr)?.message}`);
-        }
-
-        // Cleanup all screenshots
         try {
-          const paths = sessions.map((x) => `${x.session_id}.png`);
-          if (paths.length > 0) await supabase.storage.from("screenshots").remove(paths);
-        } catch { /* ignore */ }
-
-        toast.success(`${sessions.length} user dikeluarkan. Mereka akan otomatis logout.`);
-        refresh();
+          await kickAllUsers();
+          toast.success(`${sessions.length} user dikeluarkan. Mereka akan otomatis logout.`);
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal: ${err.message}`);
+        }
       },
     });
   };
@@ -264,16 +213,13 @@ export default function AdminDashboard() {
       title: "Hapus Semua Laporan",
       description: `PERINGATAN: Ini akan menghapus semua ${reports.length} laporan yang telah dikirim. Tindakan ini tidak bisa dibatalkan.`,
       action: async () => {
-        const { error } = await supabase
-          .from("report_submissions")
-          .delete()
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) {
-          toast.error(`Gagal: ${error.message}`);
-          return;
+        try {
+          await deleteAllReports();
+          toast.success(`${reports.length} laporan berhasil dihapus`);
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal: ${err.message}`);
         }
-        toast.success(`${reports.length} laporan berhasil dihapus`);
-        refresh();
       },
     });
   };
@@ -283,9 +229,13 @@ export default function AdminDashboard() {
       title: "Hapus Laporan",
       description: `Hapus laporan dari "${r.village_name}" yang dikirim oleh "${r.submitted_by}"?`,
       action: async () => {
-        await supabase.from("report_submissions").delete().eq("id", r.id);
-        toast.success("Laporan berhasil dihapus");
-        refresh();
+        try {
+          await deleteReport(r.id);
+          toast.success("Laporan berhasil dihapus");
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal: ${err.message}`);
+        }
       },
     });
   };
@@ -295,12 +245,14 @@ export default function AdminDashboard() {
       title: "Hapus Semua PDF",
       description: `PERINGATAN: Ini akan menghapus semua ${pdfFiles.length} file PDF laporan. Tindakan ini tidak bisa dibatalkan.`,
       action: async () => {
-        const paths = pdfFiles.map((p) => p.fullPath);
-        if (paths.length > 0) {
-          await supabase.storage.from("report-pdfs").remove(paths);
+        try {
+          const paths = pdfFiles.map((p) => p.fullPath);
+          await deleteAllPdfs(paths);
+          toast.success("Semua PDF berhasil dihapus");
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal: ${err.message}`);
         }
-        toast.success("Semua PDF berhasil dihapus");
-        refresh();
       },
     });
   };
@@ -310,20 +262,13 @@ export default function AdminDashboard() {
       title: `Reset Progress: ${s.user_name || "—"}`,
       description: `Progress dan SEMUA data form (Penganggaran, Penatausahaan, Pembukuan, Laporan) milik user "${s.user_name}" akan direset ke kosong. Aplikasi user akan otomatis dimuat ulang dalam beberapa detik.`,
       action: async () => {
-        const { error } = await supabase
-          .from("user_sessions")
-          .update({
-            form_progress: {} as never,
-            form_data: {} as never,
-            last_active: new Date().toISOString(),
-          })
-          .eq("session_id", s.session_id);
-        if (error) {
-          toast.error(`Gagal reset: ${error.message}`);
-          return;
+        try {
+          await resetUserProgress(s.session_id);
+          toast.success(`Progress user "${s.user_name}" berhasil direset.`);
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal: ${err.message}`);
         }
-        toast.success(`Progress "${s.user_name}" berhasil direset. User akan refresh otomatis.`);
-        refresh();
       },
     });
   };
@@ -333,21 +278,13 @@ export default function AdminDashboard() {
       title: "Reset Semua Progress",
       description: `PERINGATAN: Semua progress dan SELURUH data form (Penganggaran, Penatausahaan, Pembukuan, Laporan) dari ${sessions.length} user akan dihapus total. Aplikasi mereka akan otomatis dimuat ulang. Tindakan ini tidak dapat dibatalkan.`,
       action: async () => {
-        // Single bulk update
-        const { error } = await supabase
-          .from("user_sessions")
-          .update({
-            form_progress: {} as never,
-            form_data: {} as never,
-            last_active: new Date().toISOString(),
-          })
-          .neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) {
-          toast.error(`Gagal reset: ${error.message}`);
-          return;
+        try {
+          await resetAllProgress();
+          toast.success(`Progress ${sessions.length} user berhasil direset. Aplikasi user akan refresh otomatis.`);
+          refresh();
+        } catch (err: any) {
+          toast.error(`Gagal reset: ${err.message}`);
         }
-        toast.success(`Progress ${sessions.length} user berhasil direset. Aplikasi user akan refresh otomatis.`);
-        refresh();
       },
     });
   };
@@ -892,11 +829,14 @@ export default function AdminDashboard() {
                               </div>
                               <Button variant="ghost" size="sm"
                                 onClick={async () => {
-                                  for (const f of files) {
-                                    await supabase.storage.from("report-pdfs").remove([f.fullPath]);
+                                  try {
+                                    const paths = files.map(f => f.fullPath);
+                                    await deleteAllPdfs(paths);
+                                    toast.success(`Folder "${displayName}" berhasil dihapus`);
+                                    refresh();
+                                  } catch (err: any) {
+                                    toast.error(`Gagal: ${err.message}`);
                                   }
-                                  toast.success(`Folder "${displayName}" berhasil dihapus`);
-                                  refresh();
                                 }}
                                 className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-[10px] h-6">
                                 <Trash2 size={12} className="mr-1" /> Hapus Folder
@@ -941,8 +881,13 @@ export default function AdminDashboard() {
                                       </Button>
                                       <Button variant="ghost" size="sm"
                                         onClick={async () => {
-                                          await supabase.storage.from("report-pdfs").remove([pdf.fullPath]);
-                                          toast.success("File berhasil dihapus"); refresh();
+                                          try {
+                                            await deletePdf(pdf.fullPath);
+                                            toast.success("File berhasil dihapus"); 
+                                            refresh();
+                                          } catch (err: any) {
+                                            toast.error(`Gagal: ${err.message}`);
+                                          }
                                         }}
                                         className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 w-7 p-0">
                                         <Trash2 size={12} />

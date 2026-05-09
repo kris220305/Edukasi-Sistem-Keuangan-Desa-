@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { getSessionRecord } from "@/lib/session-manager";
 
 const BACKUP_KEY = "siskeudes_admin_backup";
 const IMPERSONATE_KEY = "siskeudes_admin_impersonate";
@@ -121,11 +121,7 @@ export async function refreshImpersonatedData(): Promise<{ ok: boolean; changed:
   const info = getImpersonation();
   if (!info) return { ok: false, changed: false };
 
-  const { data } = await supabase
-    .from("user_sessions")
-    .select("form_data, village_id, village_name, user_name")
-    .eq("session_id", info.session_id)
-    .maybeSingle();
+  const data = await getSessionRecord(info.session_id);
 
   if (!data) return { ok: false, changed: false };
 

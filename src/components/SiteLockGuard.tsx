@@ -42,6 +42,8 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
     let cancelled = false;
 
     const check = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      
       // Only react if user actually has data on the server (i.e. they registered via DataUmum)
       const hadVillage = !!localStorage.getItem("siskeudes_selected_village");
       if (!hadVillage) return;
@@ -85,6 +87,8 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const check = async () => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      
       try {
         const settings = await getSiteSettings();
         if (settings?.is_locked) {

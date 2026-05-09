@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { upsertSession, getActiveSessions } from "@/lib/session-manager";
 import { mergeStates, type AppState } from "@/data/app-state";
 import { rekeningData } from "@/data/rekening-data";
 
@@ -68,33 +68,25 @@ export class AccountingSimulationBot {
 
     try {
       // 1. Pull latest group state
-      const { data: latestRows } = await supabase
-        .from("user_sessions")
-        .select("form_data")
-        .eq("group_id", this.groupId)
-        .order("last_active", { ascending: false })
-        .limit(1);
+      const active = await getActiveSessions(5);
+      const latest = active.find(s => s.group_id === this.groupId && s.session_id !== user.sessionId);
 
-      if (latestRows && latestRows[0]?.form_data) {
-        user.localState = mergeStates(user.localState, latestRows[0].form_data as Partial<AppState>);
+      if (latest && latest.form_data) {
+        user.localState = mergeStates(user.localState, latest.form_data as Partial<AppState>);
       }
 
       // 2. Decide and perform an action
       this.performRandomAction(user);
 
-      // 3. Push back to Supabase
-      await supabase
-        .from("user_sessions")
-        .upsert({
-          session_id: user.sessionId,
-          user_name: user.userName,
-          group_id: this.groupId,
-          form_data: user.localState as any,
-          last_active: new Date().toISOString(),
-          village_id: "SIMULATION_VILLAGE",
-          village_name: "Desa Simulasi",
-          work_mode: "group"
-        } as never, { onConflict: "session_id" });
+      // 3. Push back to API
+      await upsertSession({
+        user_name: user.userName,
+        group_id: this.groupId,
+        form_data: user.localState as any,
+        village_id: "SIMULATION_VILLAGE",
+        village_name: "Desa Simulasi",
+        work_mode: "group"
+      });
 
     } catch (err) {
       console.error(`Bot ${user.userName} error:`, err);

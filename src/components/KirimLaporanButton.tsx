@@ -2,9 +2,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
-import { isCurrentUserLeader, submitReport } from "@/lib/session-manager";
+import { isCurrentUserLeader, submitReport, uploadPdf } from "@/lib/session-manager";
 import { loadState } from "@/data/app-state";
-import { supabase } from "@/integrations/supabase/client";
 import { getSessionId } from "@/lib/session-manager";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -70,10 +69,8 @@ export default function KirimLaporanButton() {
           const folderName = `${villageName}_${userName.replace(/\s+/g, "_")}`;
           const fileName = `${folderName}/${reportType}_${dateStr}_${timeStr}.pdf`;
           
-          await supabase.storage.from("report-pdfs").upload(fileName, pdfBlob, {
-            contentType: "application/pdf",
-            upsert: true,
-          });
+          const pdfBase64 = pdf.output("datauristring").split(',')[1];
+          await uploadPdf(fileName, pdfBase64);
         } catch (err) {
           console.error("PDF upload error:", err);
         }

@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getSessionId, getGroupMembers, getGroupDetail } from "@/lib/session-manager";
 import { supabase } from "@/integrations/supabase/client";
-import { getSessionId } from "@/lib/session-manager";
 
 interface FormPageHeaderProps {
   title: string;
@@ -39,19 +39,22 @@ export default function FormPageHeader({ title, subtitle, children }: FormPageHe
         if (!cancelled) setGroupInfo(null);
         return;
       }
-      const [{ data: g }, { data: m }] = await Promise.all([
-        supabase.from("groups").select("name").eq("id", groupId).maybeSingle(),
-        supabase
-          .from("group_members")
-          .select("user_name, is_leader, session_id")
-          .eq("group_id", groupId)
-          .order("joined_at", { ascending: true }),
-      ]);
-      if (cancelled) return;
-      setGroupInfo({
-        groupName: (g?.name as string) || "Kelompok",
-        members: (m || []) as GroupInfo["members"],
-      });
+      
+      try {
+        const [members, groupData] = await Promise.all([
+          getGroupMembers(groupId),
+          getGroupDetail(groupId)
+        ]);
+
+        if (cancelled) return;
+
+        setGroupInfo({
+          groupName: groupData?.name || "Kelompok",
+          members: (members || []) as GroupInfo["members"],
+        });
+      } catch (err) {
+        console.error("Error loading header group info:", err);
+      }
     };
 
     load();

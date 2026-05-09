@@ -45,6 +45,19 @@ export default async function handler(req: any, res: any) {
       return sendJson(res, 200, data ?? null);
     }
 
+    if (req.method === "PUT") {
+      const body = parseBody(req.body);
+      const { sessionId, formData } = body;
+      
+      const { error } = await supabase
+        .from("user_sessions")
+        .update({ form_data: formData, last_active: new Date().toISOString() })
+        .eq("session_id", sessionId);
+        
+      if (error) return sendJson(res, 500, { error: error.message });
+      return sendJson(res, 200, { success: true });
+    }
+
     if (req.method === "POST") {
       const body = parseBody(req.body);
       const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";

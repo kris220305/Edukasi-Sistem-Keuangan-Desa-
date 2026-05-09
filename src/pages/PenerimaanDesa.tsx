@@ -29,15 +29,18 @@ function SilpaTab() {
   const [form, setForm] = useState(emptyForm);
   const [rincianForm, setRincianForm] = useState<Omit<SilpaRincian, "id">>({ kodeRekening: "", namaRekening: "", debet: 0, kredit: 0 });
 
-  useEffect(() => { setItems(loadState().silpa || []); }, []);
+  useEffect(() => {
+    const updateItems = () => setItems(loadState().silpa || []);
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
+  }, []);
 
   const save = (newItems: SilpaItem[]) => {
-    setItems(newItems);
     const state = loadState();
     state.silpa = newItems;
-    saveState(state);
-  };
-
+    saveState(state, true);
+    setItems(newItems);
   const selectedItem = items.find(i => i.id === selectedId);
   const totalDebet = (selectedItem || (mode !== "view" ? { rincian: form.rincian } : null))?.rincian.reduce((s, r) => s + r.debet, 0) || 0;
   const totalKredit = (selectedItem || (mode !== "view" ? { rincian: form.rincian } : null))?.rincian.reduce((s, r) => s + r.kredit, 0) || 0;
@@ -263,15 +266,20 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
   const [form, setForm] = useState(emptyForm);
   const [rincianForm, setRincianForm] = useState<Omit<PenerimaanRincian, "id">>({ kodeRekening: "", namaRekening: "", sumberDana: "", nilai: 0 });
 
-  useEffect(() => { setAllItems(loadState().penerimaan || []); }, []);
+  useEffect(() => {
+    const updateItems = () => setAllItems(loadState().penerimaan || []);
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
+  }, []);
 
   const items = allItems.filter(i => i.jenis === jenis);
 
   const save = (newAll: PenerimaanItem[]) => {
-    setAllItems(newAll);
     const state = loadState();
     state.penerimaan = newAll;
-    saveState(state);
+    saveState(state, true);
+    setAllItems(newAll);
   };
 
   const selectedItem = allItems.find(i => i.id === selectedId);

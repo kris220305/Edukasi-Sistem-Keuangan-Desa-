@@ -26,13 +26,18 @@ export default function PendapatanDesa() {
   };
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => { setItems(loadState().pendapatan); }, []);
+  useEffect(() => {
+    const updateItems = () => setItems(loadState().pendapatan);
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
+  }, []);
 
   const save = (newItems: PendapatanItem[]) => {
-    setItems(newItems);
     const state = loadState();
     state.pendapatan = newItems;
-    saveState(state);
+    saveState(state, true);
+    setItems(newItems);
   };
 
   const selectedItem = items.find(i => i.id === selectedId);

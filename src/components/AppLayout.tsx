@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import TopMenuBar from "./TopMenuBar";
 import ScreenShareConsent from "./ScreenShareConsent";
 import ImpersonationBanner from "./ImpersonationBanner";
+import SyncStatus from "./SyncStatus";
 import { useGroupRealtimeSync } from "@/hooks/use-group-realtime-sync";
 import bgLandscape from "@/assets/bg-sawah-sunset.jpg";
 
@@ -53,6 +54,7 @@ export default function AppLayout() {
           
           <Outlet />
           <ScreenShareConsent />
+          <SyncStatus />
         </main>
       </div>
 

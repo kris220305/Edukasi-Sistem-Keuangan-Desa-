@@ -32,15 +32,18 @@ export default function BelanjaDesa() {
   };
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => { setItems(loadState().belanja); }, []);
+  useEffect(() => {
+    const updateItems = () => setItems(loadState().belanja);
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
+  }, []);
 
   const save = (newItems: BelanjaItem[]) => {
-    setItems(newItems);
     const state = loadState();
     state.belanja = newItems;
-    saveState(state);
-  };
-
+    saveState(state, true);
+    setItems(newItems);
   const filteredByBidang = selectedBidang ? items.filter(i => i.kodeBidang === selectedBidang) : items;
   const filteredItems = selectedKegiatan ? filteredByBidang.filter(i => i.kodeKegiatan === selectedKegiatan) : filteredByBidang;
   const selectedItem = items.find(i => i.id === selectedId);

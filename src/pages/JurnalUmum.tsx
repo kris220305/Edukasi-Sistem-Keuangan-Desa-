@@ -18,6 +18,17 @@ export default function JurnalUmum() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [mode, setMode] = useState<Mode>("view");
 
+  useEffect(() => {
+    const updateEntries = () => {
+      const state = loadState();
+      const jurnal = state.jurnalUmum || [];
+      setEntries(jurnal);
+    };
+    updateEntries();
+    window.addEventListener("siskeudes:state-updated", updateEntries);
+    return () => window.removeEventListener("siskeudes:state-updated", updateEntries);
+  }, []);
+
   // All detail rekening for journal entries
   const allRekening = rekeningData.filter(r => r.level === 3);
 
@@ -31,13 +42,6 @@ export default function JurnalUmum() {
   const [rincian, setRincian] = useState<JurnalRincian[]>([
     { id: crypto.randomUUID(), kodeRekening: "", uraian: "", debet: 0, kredit: 0 },
   ]);
-
-  useEffect(() => {
-    const state = loadState();
-    const jurnal = state.jurnalUmum || [];
-    setEntries(jurnal);
-    if (jurnal.length > 0) setCurrentIndex(0);
-  }, []);
 
   const current = entries[currentIndex] || null;
   const totalDebet = (mode !== "view" ? rincian : current?.rincian || []).reduce((s, r) => s + r.debet, 0);

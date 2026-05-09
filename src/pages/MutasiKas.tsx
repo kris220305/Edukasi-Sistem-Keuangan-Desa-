@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type MutasiKasItem } from "@/data/app-state";
@@ -12,6 +12,11 @@ import { toast } from "sonner";
 
 export default function MutasiKas() {
   const [state, setState] = useState(loadState());
+  useEffect(() => {
+    const updateState = () => setState(loadState());
+    window.addEventListener("siskeudes:state-updated", updateState);
+    return () => window.removeEventListener("siskeudes:state-updated", updateState);
+  }, []);
   const [showForm, setShowForm] = useState(false);
   const [showSourceDialog, setShowSourceDialog] = useState(false);
   const [form, setForm] = useState<Omit<MutasiKasItem, 'id'>>({
@@ -36,7 +41,7 @@ export default function MutasiKas() {
       newState.pencairan = newState.pencairan.map(p => p.id === form.sourceId ? { ...p, sudahMutasi: true } : p);
     }
 
-    saveState(newState);
+    saveState(newState, true);
     setState(newState);
     void trackFormProgress("mutasi");
     setShowForm(false);

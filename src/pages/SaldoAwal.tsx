@@ -28,12 +28,10 @@ export default function SaldoAwal() {
   useEffect(() => { setItems(loadState().saldoAwal); }, []);
 
   const save = (newItems: SaldoAwalItem[]) => {
-    setItems(newItems);
     const state = loadState();
     state.saldoAwal = newItems;
-    saveState(state);
-  };
-
+    saveState(state, true);
+    setItems(newItems);
   const fmt = (n: number) => n.toLocaleString("id-ID", { minimumFractionDigits: 2 });
 
   const totalDebet = items.reduce((s, i) => s + i.debet, 0);

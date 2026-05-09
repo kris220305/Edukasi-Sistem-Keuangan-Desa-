@@ -35,15 +35,18 @@ export default function SPPPembiayaan() {
   const rekeningPembiayaan = getRekeningDetail("pembiayaan").filter(r => r.kode.startsWith("6.2"));
 
   useEffect(() => {
-    setItems(loadState().spp.filter(i => i.jenis === "pembiayaan"));
+    const updateItems = () => setItems(loadState().spp.filter(i => i.jenis === "pembiayaan"));
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
   }, []);
 
-  const save = (allItems: SPPItem[]) => {
+  const save = (allSpp: SPPItem[]) => {
     const state = loadState();
     const other = state.spp.filter(i => i.jenis !== "pembiayaan");
-    state.spp = [...other, ...allItems];
-    saveState(state);
-    setItems(allItems);
+    state.spp = [...other, ...allSpp];
+    saveState(state, true);
+    setItems(allSpp);
   };
 
   const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/2024`;

@@ -44,14 +44,17 @@ export default function SPPDefinitif() {
   const rekeningPajak = getRekeningDetail("non_anggaran");
 
   useEffect(() => {
-    setItems(loadState().spp.filter(i => i.jenis === "definitif"));
+    const updateItems = () => setItems(loadState().spp.filter(i => i.jenis === "definitif"));
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
   }, []);
 
   const save = (allItems: SPPItem[]) => {
     const state = loadState();
     const other = state.spp.filter(i => i.jenis !== "definitif");
     state.spp = [...other, ...allItems];
-    saveState(state);
+    saveState(state, true);
     setItems(allItems);
   };
 

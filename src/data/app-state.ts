@@ -417,7 +417,7 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingState: AppState | null = null;
 let lastPushedState = "";
 
-function flushPush() {
+async function flushPush() {
   pushTimer = null;
   const state = pendingState;
   pendingState = null;
@@ -426,28 +426,44 @@ function flushPush() {
     if (localStorage.getItem('siskeudes_admin_impersonate')) return;
     const serialized = JSON.stringify(state);
     if (serialized === lastPushedState) return;
+    
+    window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "syncing" }));
+    
     lastPushedState = serialized;
     const payload = JSON.parse(serialized) as Record<string, unknown>;
     localStorage.setItem('siskeudes_last_local_write_at', String(Date.now()));
-    void upsertSession({ form_data: payload });
-  } catch { /* ignore */ }
-}
-
-export function saveState(state: AppState) {
-  const prev = loadState();
-  const stamped = bumpVersions(prev, state);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stamped));
-  try { localStorage.setItem('siskeudes_app_state', JSON.stringify(stamped)); } catch { /* ignore */ }
-
-  pendingState = stamped;
-  if (pushTimer) clearTimeout(pushTimer);
-  pushTimer = setTimeout(flushPush, 1200);
+    await upsertSession({ form_data: payload });
+    
+    window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "saved" }));
+    // Reset to idle after a delay
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "idle" }));
+    }, 2000);
+  } catch (error) {
+    console.error("Sync failed:", error);
+    window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "error" }));
+  }
 }
 
 export function flushSaveStateNow() {
   if (pushTimer) {
     clearTimeout(pushTimer);
-    pushTimer = null;
+    flushPush();
   }
-  flushPush();
+}
+
+export function saveState(state: AppState, immediate = false) {
+  const prev = loadState();
+  const next = bumpVersions(prev, state);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  try { localStorage.setItem('siskeudes_app_state', JSON.stringify(next)); } catch { /* ignore */ }
+
+  pendingState = next;
+  if (pushTimer) clearTimeout(pushTimer);
+  
+  if (immediate) {
+    flushPush();
+  } else {
+    pushTimer = setTimeout(flushPush, 1200);
+  }
 }

@@ -41,14 +41,17 @@ export default function SPPPanjar() {
   const rekeningPajak = getRekeningDetail("non_anggaran");
 
   useEffect(() => {
-    setItems(loadState().spp.filter(i => i.jenis === "panjar"));
+    const updateItems = () => setItems(loadState().spp.filter(i => i.jenis === "panjar"));
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
   }, []);
 
   const save = (allSpp: SPPItem[]) => {
     const state = loadState();
     const otherSpp = state.spp.filter(i => i.jenis !== "panjar");
     state.spp = [...otherSpp, ...allSpp];
-    saveState(state);
+    saveState(state, true);
     setItems(allSpp);
   };
 

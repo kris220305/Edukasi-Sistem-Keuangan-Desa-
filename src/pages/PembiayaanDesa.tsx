@@ -32,13 +32,18 @@ export default function PembiayaanDesa() {
   };
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => { setItems(loadState().pembiayaan); }, []);
+  useEffect(() => {
+    const updateItems = () => setItems(loadState().pembiayaan);
+    updateItems();
+    window.addEventListener("siskeudes:state-updated", updateItems);
+    return () => window.removeEventListener("siskeudes:state-updated", updateItems);
+  }, []);
 
   const save = (newItems: PembiayaanItem[]) => {
-    setItems(newItems);
     const state = loadState();
     state.pembiayaan = newItems;
-    saveState(state);
+    saveState(state, true);
+    setItems(newItems);
   };
 
   const filtered = items.filter(i => i.jenis === activeTab);

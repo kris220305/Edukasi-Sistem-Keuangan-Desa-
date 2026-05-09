@@ -21,6 +21,11 @@ type ActiveTab = "spj" | "rincian" | "kwitansi" | "potongan" | "sisa";
 
 export default function SPJKegiatan() {
   const [state, setState] = useState(loadState());
+  useEffect(() => {
+    const updateState = () => setState(loadState());
+    window.addEventListener("siskeudes:state-updated", updateState);
+    return () => window.removeEventListener("siskeudes:state-updated", updateState);
+  }, []);
   const [activeTab, setActiveTab] = useState<ActiveTab>("spj");
 
   useEffect(() => {

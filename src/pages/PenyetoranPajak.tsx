@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type PenyetoranPajak as PenyetoranPajakItem } from "@/data/app-state";
@@ -17,6 +17,11 @@ type ActiveTab = "penyetoran" | "rincianBuktiPotong";
 
 export default function PenyetoranPajak() {
   const [state, setState] = useState(loadState());
+  useEffect(() => {
+    const updateState = () => setState(loadState());
+    window.addEventListener("siskeudes:state-updated", updateState);
+    return () => window.removeEventListener("siskeudes:state-updated", updateState);
+  }, []);
   const [selected, setSelected] = useState<PenyetoranPajakItem | null>(null);
   const [mode, setMode] = useState<Mode>("view");
   const [activeTab, setActiveTab] = useState<ActiveTab>("penyetoran");
@@ -120,7 +125,7 @@ export default function PenyetoranPajak() {
   const handleHapus = () => {
     if (!selected) { toast.error("Pilih data terlebih dahulu"); return; }
     const newState = { ...state, penyetoranPajak: state.penyetoranPajak.filter(p => p.id !== selected.id) };
-    saveState(newState);
+    saveState(newState, true);
     setState(newState);
     setSelected(null);
     toast.success("Data penyetoran pajak dihapus");
@@ -144,7 +149,7 @@ export default function PenyetoranPajak() {
       newPenyetoran = [...state.penyetoranPajak, newItem];
     }
     const newState = { ...state, penyetoranPajak: newPenyetoran };
-    saveState(newState);
+    saveState(newState, true);
     setState(newState);
     setSelected(newItem);
     trackFormProgress("pajak");

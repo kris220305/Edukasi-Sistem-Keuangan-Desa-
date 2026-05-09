@@ -1,5 +1,4 @@
 import html2canvas from "html2canvas";
-import { supabase } from "@/integrations/supabase/client";
 import { getSessionId } from "@/lib/session-manager";
 
 const CONSENT_KEY = "siskeudes_screen_share_consent";
@@ -78,6 +77,6 @@ export function stopScreenCapture() {
 }
 
 export function getScreenshotUrl(sessionId: string): string {
-  const { data } = supabase.storage.from("screenshots").getPublicUrl(`${sessionId}/latest.jpg`);
-  return data.publicUrl;
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  return `${url}/storage/v1/object/public/screenshots/${sessionId}/latest.jpg`;
 }

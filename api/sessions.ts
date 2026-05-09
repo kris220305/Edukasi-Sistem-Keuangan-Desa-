@@ -62,31 +62,32 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === "POST") {
       const body = parseBody(req.body);
-      const sessionId = typeof body.sessionId === "string" ? body.sessionId : "";
-      const payloadInput =
-        body.payload && typeof body.payload === "object"
-          ? (body.payload as Record<string, unknown>)
-          : {};
+      const sessionId = body.sessionId;
+      const payloadInput = body.payload || {};
 
-      if (!sessionId) {
-        return sendJson(res, 400, { error: "sessionId is required" });
+      if (!sessionId || typeof sessionId !== "string") {
+        return sendJson(res, 400, { error: "Valid sessionId is required" });
       }
 
       let existingProgress: Record<string, unknown> = {};
       if (payloadInput.form_progress !== undefined) {
-        const { data: existing } = await supabase
-          .from("user_sessions")
-          .select("form_progress")
-          .eq("session_id", sessionId)
-          .maybeSingle();
+        try {
+          const { data: existing } = await supabase
+            .from("user_sessions")
+            .select("form_progress")
+            .eq("session_id", sessionId)
+            .maybeSingle();
 
-        existingProgress =
-          typeof existing?.form_progress === "object" && existing.form_progress !== null
-            ? (existing.form_progress as Record<string, unknown>)
-            : {};
+          existingProgress =
+            typeof existing?.form_progress === "object" && existing.form_progress !== null
+              ? (existing.form_progress as Record<string, unknown>)
+              : {};
+        } catch (e) {
+          console.error("Error fetching existing progress:", e);
+        }
       }
 
-      const payload: Record<string, unknown> = {
+      const payload: any = {
         session_id: sessionId,
         last_active: new Date().toISOString(),
       };
@@ -106,7 +107,7 @@ export default async function handler(req: any, res: any) {
 
       const { data, error } = await supabase
         .from("user_sessions")
-        .upsert(payload as never, { onConflict: "session_id" })
+        .upsert(payload, { onConflict: "session_id" })
         .select("*")
         .maybeSingle();
 

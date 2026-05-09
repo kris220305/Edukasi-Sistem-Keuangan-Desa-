@@ -88,27 +88,35 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const check = async () => {
-      const settings = await getSiteSettings();
-      if (settings?.is_locked) {
-        setLocked(true);
-        setChecking(false);
-        return;
-      }
-
-      if (settings?.max_users && settings.max_users > 0) {
-        const active = await getActiveSessions(5);
-        const sessionId = getSessionId();
-        const isExisting = active.some((s) => s.session_id === sessionId);
-        if (!isExisting && active.length >= settings.max_users) {
-          setMaxReached(true);
-          setChecking(false);
+      try {
+        const settings = await getSiteSettings();
+        if (settings?.is_locked) {
+          setLocked(true);
+          setMaxReached(false);
           return;
         }
-      }
 
-      setLocked(false);
-      setMaxReached(false);
-      setChecking(false);
+        if (settings?.max_users && settings.max_users > 0) {
+          const active = await getActiveSessions(5);
+          const sessionId = getSessionId();
+          const isExisting = active.some((s) => s.session_id === sessionId);
+          if (!isExisting && active.length >= settings.max_users) {
+            setLocked(false);
+            setMaxReached(true);
+            return;
+          }
+        }
+
+        setLocked(false);
+        setMaxReached(false);
+      } catch (error) {
+        console.error("Site lock check failed:", error);
+        // Fail open so the app still loads if Supabase is slow or unreachable.
+        setLocked(false);
+        setMaxReached(false);
+      } finally {
+        setChecking(false);
+      }
     };
 
     check();

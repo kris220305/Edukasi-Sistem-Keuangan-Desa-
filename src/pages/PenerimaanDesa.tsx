@@ -4,6 +4,7 @@ import { trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
 import { loadState, saveState, type PenerimaanItem, type PenerimaanRincian, type SilpaItem, type SilpaRincian } from "@/data/app-state";
 import { getPendapatanOptions } from "@/lib/financial-engine";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +16,7 @@ import { toast } from "sonner";
 type Mode = "view" | "tambah" | "ubah";
 type ActiveTab = "silpa" | "tunai" | "bank";
 
-// ===================== SILPA TAB =====================
-function SilpaTab() {
-  const [items, setItems] = useState<SilpaItem[]>([]);
+const [items, setItems] = useState<SilpaItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("view");
 
@@ -286,7 +285,7 @@ function PenerimaanTab({ jenis }: { jenis: "tunai" | "bank" }) {
 
   const generateNoBukti = () => {
     const count = items.length + 1;
-    return `${String(count).padStart(4, "0")}/TBP/05.2001/2024`;
+    return `${String(count).padStart(4, "0")}/TBP/05.2001/${getTahunAnggaran()}`;
   };
 
   const handleTambah = () => { setMode("tambah"); setSelectedId(null); setForm({ ...emptyForm }); setShowRincian(false); };

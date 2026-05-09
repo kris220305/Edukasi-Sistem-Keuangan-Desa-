@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type JurnalUmumItem, type JurnalRincian } from "@/data/app-state";
+import { getTahunAnggaran } from "@/lib/financial-engine";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,7 +68,7 @@ export default function JurnalUmum() {
     setForm({
       tanggal: new Date().toISOString().split("T")[0],
       kodeBuku: generateKodeBuku(),
-      nomorBukti: `${String(count).padStart(4, "0")}/JU/05.2001/2024`,
+      nomorBukti: `${String(count).padStart(4, "0")}/JU/05.2001/${getTahunAnggaran()}`,
       uraian: "",
     });
     setRincian([{ id: crypto.randomUUID(), kodeRekening: "", uraian: "", debet: 0, kredit: 0 }]);

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type PencairanSPP, type SPPItem } from "@/data/app-state";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,12 +46,12 @@ export default function PencairanSPPPage() {
 
   const generateNoPencairan = (spp: SPPItem) => {
     const count = pencairan.filter(p => p.sppId === spp.id).length + 1;
-    return `${String(count).padStart(4, "0")}/SPP/05.2001/2024`;
+    return `${String(count).padStart(4, "0")}/SPP/05.2001/${getTahunAnggaran()}`;
   };
 
   const generateNoBukti = () => {
     const count = pencairan.length + 1;
-    return `${String(count).padStart(4, "0")}/BANK/05.2001/2024`;
+    return `${String(count).padStart(4, "0")}/BANK/05.2001/${getTahunAnggaran()}`;
   };
 
   const handleTambah = () => {

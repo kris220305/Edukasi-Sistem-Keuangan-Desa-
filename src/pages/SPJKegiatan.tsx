@@ -7,6 +7,7 @@ import {
   type SPJPanjarItem, type SisaPanjarItem,
   type SPJRincian, type BuktiTransaksi, type PotonganPajak,
 } from "@/data/app-state";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +16,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Pencil, Trash2, X, Save, Printer, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 type Mode = "view" | "add" | "edit";
-// Top-level menus mirror the previous structure: 4 sub-tabs for SPJ Panjar + Sisa Panjar
-type ActiveTab = "spj" | "rincian" | "kwitansi" | "potongan" | "sisa";
+// Main menus per client revision
+type MainMenu = "spj_panjar" | "sisa_panjar";
+// Sub-tabs for SPJ Panjar menu
+type SPJSubTab = "spj" | "rincian" | "kwitansi" | "potongan";
 
 export default function SPJKegiatan() {
   const [state, setState] = useState(loadState());
@@ -26,7 +31,9 @@ export default function SPJKegiatan() {
     window.addEventListener("siskeudes:state-updated", updateState);
     return () => window.removeEventListener("siskeudes:state-updated", updateState);
   }, []);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("spj");
+  
+  const [activeMenu, setActiveMenu] = useState<MainMenu>("spj_panjar");
+  const [activeSubTab, setActiveSubTab] = useState<SPJSubTab>("spj");
 
   useEffect(() => {
     const onUpd = () => setState(loadState());
@@ -68,8 +75,8 @@ export default function SPJKegiatan() {
 
   const rekeningPajak = getRekeningDetail("non_anggaran");
 
-  const generateNoSPJ = () => `${String((state.spjPanjar || []).length + 1).padStart(4, "0")}/SPJ/05.2001/2024`;
-  const generateNoBukti = () => `${String(((selectedSPJ?.buktiKwitansi?.length) || 0) + 1).padStart(5, "0")}/KWT/05.2001/2024`;
+  const generateNoSPJ = () => `${String((state.spjPanjar || []).length + 1).padStart(4, "0")}/SPJ/05.2001/${getTahunAnggaran()}`;
+  const generateNoBukti = () => `${String(((selectedSPJ?.buktiKwitansi?.length) || 0) + 1).padStart(5, "0")}/KWT/05.2001/${getTahunAnggaran()}`;
 
   const sppOptions = useMemo(() => panjarSPPs.map(s => ({ id: s.id, no: s.nomorSPP, jumlah: s.jumlah, uraian: s.uraian, rincian: s.rincian })), [panjarSPPs]);
   const sppRincianOptions = useMemo(() => {
@@ -80,7 +87,7 @@ export default function SPJKegiatan() {
 
   // ===== SPJ Header CRUD =====
   const handleTambahSPJ = () => {
-    setActiveTab("spj");
+    setActiveSubTab("spj");
     setMode("add");
     setSelectedSPJId(null);
     setSpjForm({ sppId: "", nomorSPJ: generateNoSPJ(), tanggalSPJ: new Date().toISOString().slice(0, 10), keterangan: "" });
@@ -212,9 +219,9 @@ export default function SPJKegiatan() {
   });
 
   const handleTambahSisa = () => {
-    setActiveTab("sisa"); setSisaMode("add"); setSelectedSisaId(null);
+    setActiveMenu("sisa_panjar"); setSisaMode("add"); setSelectedSisaId(null);
     const count = (state.sisaPanjar || []).length + 1;
-    setSisaForm({ spjId: "", tanggal: new Date().toISOString().slice(0, 10), buktiNo: `${String(count).padStart(4, "0")}/SISA/05.2001/2024`, nominal: 0, keterangan: "" });
+    setSisaForm({ spjId: "", tanggal: new Date().toISOString().slice(0, 10), buktiNo: `${String(count).padStart(4, "0")}/SISA/05.2001/${getTahunAnggaran()}`, nominal: 0, keterangan: "" });
   };
   const handleUbahSisa = () => {
     if (!selectedSisa) { toast.error("Pilih data"); return; }
@@ -259,358 +266,383 @@ export default function SPJKegiatan() {
     </div>
   );
 
-  const tabs: { id: ActiveTab; label: string }[] = [
+  const subTabs: { id: SPJSubTab; label: string }[] = [
     { id: "spj", label: "SPJ" },
     { id: "rincian", label: "Rincian SPJ" },
     { id: "kwitansi", label: "Bukti Kwitansi" },
     { id: "potongan", label: "Potongan" },
-    { id: "sisa", label: "Sisa Panjar" },
   ];
 
-  const subtitleByTab: Record<ActiveTab, string> = {
-    spj: "SPJ Panjar Kegiatan",
-    rincian: "Rincian SPJ",
-    kwitansi: "Bukti Kwitansi",
-    potongan: "Potongan Pajak",
-    sisa: "Sisa Panjar",
-  };
+  const subtitle = activeMenu === "spj_panjar" ? "SPJ Panjar Kegiatan" : "Sisa Panjar";
 
   return (
     <div className="h-full flex flex-col">
-      <FormPageHeader title="Pengesahan SPJ Kegiatan" subtitle={subtitleByTab[activeTab]} />
+      <FormPageHeader title="Pengesahan SPJ Kegiatan" subtitle={subtitle} />
 
-      <div className="flex-1 p-4 flex gap-0 overflow-hidden">
-        {/* Vertical Tabs (left) */}
-        <div className="flex flex-col border border-border rounded-l-md overflow-hidden bg-card/60 backdrop-blur-sm">
-          {tabs.map(t => (
-            <button key={t.id}
-              onClick={() => {
-                if (t.id !== "spj" && t.id !== "sisa" && !selectedSPJ) { toast.error("Pilih SPJ terlebih dahulu"); return; }
-                setActiveTab(t.id);
-              }}
-              className={`px-3 py-5 text-[10px] font-semibold border-b border-border transition-colors ${activeTab === t.id ? "bg-primary text-primary-foreground" : "hover:bg-muted/60"}`}
-              style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>
-              {t.label}
-            </button>
-          ))}
+      <div className="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
+        {/* Main Menu Tabs */}
+        <div className="flex gap-1 p-1 bg-muted/40 rounded-lg w-fit">
+          <Button 
+            variant={activeMenu === "spj_panjar" ? "default" : "ghost"} 
+            size="sm" 
+            className="text-[11px] h-8 px-4"
+            onClick={() => setActiveMenu("spj_panjar")}
+          >
+            1. SPJ Panjar Kegiatan
+          </Button>
+          <Button 
+            variant={activeMenu === "sisa_panjar" ? "default" : "ghost"} 
+            size="sm" 
+            className="text-[11px] h-8 px-4"
+            onClick={() => setActiveMenu("sisa_panjar")}
+          >
+            2. Sisa Panjar
+          </Button>
         </div>
 
-        {/* Content area */}
-        <div className="flex-1 border border-l-0 border-border rounded-r-md bg-card/80 backdrop-blur-md flex flex-col overflow-hidden">
-
-          {/* ===== TAB: SPJ ===== */}
-          {activeTab === "spj" && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-auto border-b border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/60 text-[11px]">
-                      <TableHead className="font-semibold">Tgl SPJ</TableHead>
-                      <TableHead className="font-semibold">No SPJ</TableHead>
-                      <TableHead className="font-semibold">No SPP</TableHead>
-                      <TableHead className="font-semibold">Keterangan</TableHead>
-                      <TableHead className="font-semibold text-right">Cair</TableHead>
-                      <TableHead className="font-semibold text-right">SPJ</TableHead>
-                      <TableHead className="font-semibold text-right">Sisa</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(state.spjPanjar || []).length === 0 ? (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8 text-xs">Belum ada SPJ Panjar</TableCell></TableRow>
-                    ) : (state.spjPanjar || []).map(s => (
-                      <TableRow key={s.id}
-                        className={`cursor-pointer text-[11px] ${selectedSPJId === s.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelectedSPJId(s.id); setMode("view"); }}
-                        onDoubleClick={() => { setSelectedSPJId(s.id); setMode("view"); setActiveTab("rincian"); }}>
-                        <TableCell>{s.tanggalSPJ}</TableCell>
-                        <TableCell className="font-mono">{s.nomorSPJ}</TableCell>
-                        <TableCell className="font-mono">{s.nomorSPP}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{s.keterangan}</TableCell>
-                        <TableCell className="text-right">{fmt(s.jumlahCair)}</TableCell>
-                        <TableCell className="text-right">{fmt(s.jumlahSPJ)}</TableCell>
-                        <TableCell className="text-right font-medium">{fmt(s.sisa)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
-                <div className="flex items-center gap-2">
-                  <Label className="text-[11px] w-24 shrink-0">No SPP</Label>
-                  {mode === "add" ? (
-                    <Select value={spjForm.sppId} onValueChange={v => setSpjForm({ ...spjForm, sppId: v })}>
-                      <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih SPP Panjar Final" /></SelectTrigger>
-                      <SelectContent>
-                        {sppOptions.length === 0 ? <SelectItem value="__empty" disabled>Tidak ada SPP Panjar Final</SelectItem>
-                          : sppOptions.map(o => <SelectItem key={o.id} value={o.id} className="text-[11px]">{o.no} — Rp {fmt(o.jumlah)}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input className="h-7 text-[11px]" readOnly value={selectedSPJ?.nomorSPP || ""} />
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-[11px] w-24 shrink-0">No SPJ</Label>
-                  <Input className="h-7 text-[11px]" readOnly={mode === "view"}
-                    value={mode !== "view" ? spjForm.nomorSPJ : selectedSPJ?.nomorSPJ || ""}
-                    onChange={e => setSpjForm({ ...spjForm, nomorSPJ: e.target.value })} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-[11px] w-24 shrink-0">Tgl SPJ</Label>
-                  <Input type="date" className="h-7 text-[11px]" readOnly={mode === "view"}
-                    value={mode !== "view" ? spjForm.tanggalSPJ : selectedSPJ?.tanggalSPJ || ""}
-                    onChange={e => setSpjForm({ ...spjForm, tanggalSPJ: e.target.value })} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label className="text-[11px] w-24 shrink-0">Keterangan</Label>
-                  <Input className="h-7 text-[11px]" readOnly={mode === "view"}
-                    value={mode !== "view" ? spjForm.keterangan : selectedSPJ?.keterangan || ""}
-                    onChange={e => setSpjForm({ ...spjForm, keterangan: e.target.value })} />
-                </div>
-              </div>
-              <ActionBar onTambah={handleTambahSPJ} onUbah={handleUbahSPJ} onHapus={handleHapusSPJ} onBatal={() => setMode("view")} onSimpan={handleSimpanSPJ} />
+        <div className="flex-1 flex gap-0 overflow-hidden">
+          {/* Vertical Sub-Tabs (only for SPJ Panjar menu) */}
+          {activeMenu === "spj_panjar" && (
+            <div className="flex flex-col border border-border rounded-l-md overflow-hidden bg-card/60 backdrop-blur-sm">
+              {subTabs.map(t => (
+                <button key={t.id}
+                  onClick={() => {
+                    if (t.id !== "spj" && !selectedSPJ) { toast.error("Pilih SPJ terlebih dahulu"); return; }
+                    setActiveSubTab(t.id);
+                  }}
+                  className={`px-3 py-5 text-[10px] font-semibold border-b border-border transition-colors ${activeSubTab === t.id ? "bg-primary text-primary-foreground" : "hover:bg-muted/60"}`}
+                  style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}>
+                  {t.label}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* ===== TAB: RINCIAN SPJ ===== */}
-          {activeTab === "rincian" && selectedSPJ && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px] flex items-center justify-between">
-                <span><span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span> — {selectedSPJ.keterangan}</span>
-                <span className="text-muted-foreground">Total Rincian: <span className="font-semibold text-foreground">Rp {fmt((selectedSPJ.rincianSPJ || []).reduce((s, r) => s + r.nilai, 0))}</span></span>
-              </div>
-              <div className="flex-1 overflow-auto border-b border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/60 text-[11px]">
-                      <TableHead>No.Ref</TableHead>
-                      <TableHead>Kode Rekening</TableHead>
-                      <TableHead>Nama Rincian</TableHead>
-                      <TableHead>Kegiatan</TableHead>
-                      <TableHead className="text-right">Nilai</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(selectedSPJ.rincianSPJ || []).length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6 text-xs">Belum ada rincian</TableCell></TableRow>
-                    ) : (selectedSPJ.rincianSPJ || []).map(r => (
-                      <TableRow key={r.id}
-                        className={`cursor-pointer text-[11px] ${selectedRincianId === r.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelectedRincianId(r.id); setRincianMode("view"); setRincianForm({ kodeRekening: r.kodeRekening, namaRekening: r.namaRekening, nilai: r.nilai, belanjaId: r.belanjaId, noRef: r.noRef || "", kodeKegiatan: r.kodeKegiatan || "", namaKegiatan: r.namaKegiatan || "" }); }}>
-                        <TableCell className="font-mono">{r.noRef || "-"}</TableCell>
-                        <TableCell className="font-mono">{r.kodeRekening}</TableCell>
-                        <TableCell>{r.namaRekening}</TableCell>
-                        <TableCell className="max-w-[180px] truncate" title={r.namaKegiatan}>{r.kodeKegiatan} {r.namaKegiatan ? `— ${r.namaKegiatan}` : ""}</TableCell>
-                        <TableCell className="text-right font-medium">{fmt(r.nilai)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
-                <div className="col-span-2 flex items-center gap-2">
-                  <Label className="text-[11px] w-28 shrink-0">Pilih Rincian SPP</Label>
-                  <Select value={rincianForm.belanjaId || ""} disabled={rincianMode === "view"} onValueChange={v => {
-                    const opt = sppRincianOptions.find(o => o.id === v);
-                    if (opt) setRincianForm({
-                      kodeRekening: opt.kodeRekening, namaRekening: opt.namaRekening, nilai: opt.nilai,
-                      belanjaId: opt.id, noRef: opt.noRef || "", kodeKegiatan: opt.kodeKegiatan || "", namaKegiatan: opt.namaKegiatan || "",
-                    });
-                  }}>
-                    <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih baris dari Rincian SPP" /></SelectTrigger>
-                    <SelectContent>{sppRincianOptions.map(o => <SelectItem key={o.id} value={o.id} className="text-[11px]">[{o.noRef || "-"}] {o.kodeRekening} — {o.namaRekening}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Kode Rekening</Label>
-                  <Input className="h-7 text-[11px] font-mono" readOnly value={rincianForm.kodeRekening} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nama Rincian</Label>
-                  <Input className="h-7 text-[11px]" readOnly value={rincianForm.namaRekening} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Kegiatan</Label>
-                  <Input className="h-7 text-[11px]" readOnly value={`${rincianForm.kodeKegiatan || ""} ${rincianForm.namaKegiatan ? `— ${rincianForm.namaKegiatan}` : ""}`} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nilai</Label>
-                  <Input type="number" className="h-7 text-[11px] text-right" readOnly={rincianMode === "view"}
-                    value={rincianForm.nilai || ""} onChange={e => setRincianForm({ ...rincianForm, nilai: Number(e.target.value) })} /></div>
-              </div>
-              <ActionBar onTambah={handleTambahRincian}
-                onUbah={() => { if (!selectedRincianId) { toast.error("Pilih rincian"); return; } setRincianMode("edit"); }}
-                onHapus={handleHapusRincian} onBatal={() => setRincianMode("view")} onSimpan={handleSimpanRincian} />
-            </div>
-          )}
+          {/* Content area */}
+          <div className={`flex-1 border ${activeMenu === "spj_panjar" ? "border-l-0 rounded-r-md" : "rounded-md"} border-border bg-card/80 backdrop-blur-md flex flex-col overflow-hidden`}>
 
-          {/* ===== TAB: KWITANSI ===== */}
-          {activeTab === "kwitansi" && selectedSPJ && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px]">
-                <span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span>
-              </div>
-              <div className="flex-1 overflow-auto border-b border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/60 text-[11px]">
-                      <TableHead>Tgl</TableHead>
-                      <TableHead>No Bukti</TableHead>
-                      <TableHead>Keterangan</TableHead>
-                      <TableHead>Penerima</TableHead>
-                      <TableHead className="text-right">Jumlah</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(selectedSPJ.buktiKwitansi || []).length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6 text-xs">Belum ada kwitansi</TableCell></TableRow>
-                    ) : (selectedSPJ.buktiKwitansi || []).map(b => (
-                      <TableRow key={b.id}
-                        className={`cursor-pointer text-[11px] ${selectedBuktiId === b.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelectedBuktiId(b.id); setBuktiMode("view"); setBuktiForm({ tanggal: b.tanggal, noBukti: b.noBukti, keterangan: b.keterangan, jumlah: b.jumlah, penerima: b.penerima || "", nama: b.nama || "", alamat: b.alamat || "" }); }}>
-                        <TableCell>{b.tanggal}</TableCell>
-                        <TableCell className="font-mono">{b.noBukti}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{b.keterangan}</TableCell>
-                        <TableCell>{b.nama}</TableCell>
-                        <TableCell className="text-right font-medium">{fmt(b.jumlah)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Tanggal</Label>
-                  <Input type="date" className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.tanggal} onChange={e => setBuktiForm({ ...buktiForm, tanggal: e.target.value })} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">No Bukti</Label>
-                  <Input className="h-7 text-[11px] font-mono" readOnly={buktiMode === "view"} value={buktiForm.noBukti} onChange={e => setBuktiForm({ ...buktiForm, noBukti: e.target.value })} /></div>
-                <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Keterangan</Label>
-                  <Input className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.keterangan} onChange={e => setBuktiForm({ ...buktiForm, keterangan: e.target.value })} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Penerima</Label>
-                  <Input className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.nama} onChange={e => setBuktiForm({ ...buktiForm, nama: e.target.value, penerima: e.target.value })} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Jumlah</Label>
-                  <Input type="number" className="h-7 text-[11px] text-right" readOnly={buktiMode === "view"} value={buktiForm.jumlah || ""} onChange={e => setBuktiForm({ ...buktiForm, jumlah: Number(e.target.value) })} /></div>
-              </div>
-              <ActionBar onTambah={handleTambahBukti}
-                onUbah={() => { if (!selectedBuktiId) { toast.error("Pilih kwitansi"); return; } setBuktiMode("edit"); }}
-                onHapus={handleHapusBukti} onBatal={() => setBuktiMode("view")} onSimpan={handleSimpanBukti} />
-            </div>
-          )}
+            {activeMenu === "spj_panjar" ? (
+              <>
+                {/* ===== SUB-TAB: SPJ ===== */}
+                {activeSubTab === "spj" && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 overflow-auto border-b border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-secondary/60 text-[11px]">
+                            <TableHead className="font-semibold">Tgl SPJ</TableHead>
+                            <TableHead className="font-semibold">No SPJ</TableHead>
+                            <TableHead className="font-semibold">No SPP</TableHead>
+                            <TableHead className="font-semibold">Keterangan</TableHead>
+                            <TableHead className="font-semibold text-right">Cair</TableHead>
+                            <TableHead className="font-semibold text-right">SPJ</TableHead>
+                            <TableHead className="font-semibold text-right">Sisa</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(state.spjPanjar || []).length === 0 ? (
+                            <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8 text-xs">Belum ada SPJ Panjar</TableCell></TableRow>
+                          ) : (state.spjPanjar || []).map(s => (
+                            <TableRow key={s.id}
+                              className={`cursor-pointer text-[11px] ${selectedSPJId === s.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
+                              onClick={() => { setSelectedSPJId(s.id); setMode("view"); }}
+                              onDoubleClick={() => { setSelectedSPJId(s.id); setMode("view"); setActiveSubTab("rincian"); }}>
+                              <TableCell>{s.tanggalSPJ}</TableCell>
+                              <TableCell className="font-mono">{s.nomorSPJ}</TableCell>
+                              <TableCell className="font-mono">{s.nomorSPP}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{s.keterangan}</TableCell>
+                              <TableCell className="text-right">{fmt(s.jumlahCair)}</TableCell>
+                              <TableCell className="text-right">{fmt(s.jumlahSPJ)}</TableCell>
+                              <TableCell className="text-right font-medium">{fmt(s.sisa)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
 
-          {/* ===== TAB: POTONGAN ===== */}
-          {activeTab === "potongan" && selectedSPJ && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px] flex items-center justify-between">
-                <span><span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span></span>
-                <span className="text-[10px] text-muted-foreground italic">Otomatis terkirim ke Penyetoran Pajak</span>
-              </div>
-              <div className="flex-1 overflow-auto border-b border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/60 text-[11px]">
-                      <TableHead>Kode Rekening</TableHead>
-                      <TableHead>Nama Rekening</TableHead>
-                      <TableHead className="text-right">Nilai</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(selectedSPJ.potongan || []).length === 0 ? (
-                      <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6 text-xs">Belum ada potongan</TableCell></TableRow>
-                    ) : (selectedSPJ.potongan || []).map((p, i) => (
-                      <TableRow key={i}
-                        className={`cursor-pointer text-[11px] ${selectedPotIdx === i ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelectedPotIdx(i); setPotMode("view"); setPotForm({ ...p }); }}>
-                        <TableCell className="font-mono">{p.kodeRekening}</TableCell>
-                        <TableCell>{p.namaRekening}</TableCell>
-                        <TableCell className="text-right font-medium">{fmt(p.nilai)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
-                <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Rekening Pajak</Label>
-                  <Select value={potForm.kodeRekening} disabled={potMode === "view"} onValueChange={v => {
-                    const r = rekeningPajak.find(x => x.kode === v);
-                    setPotForm({ ...potForm, kodeRekening: v, namaRekening: r?.uraian || "" });
-                  }}>
-                    <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih rekening pajak" /></SelectTrigger>
-                    <SelectContent>{rekeningPajak.map(r => <SelectItem key={r.kode} value={r.kode} className="text-[11px]">{r.kode} — {r.uraian}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nama Rekening</Label>
-                  <Input className="h-7 text-[11px]" readOnly value={potForm.namaRekening} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nilai</Label>
-                  <Input type="number" className="h-7 text-[11px] text-right" readOnly={potMode === "view"} value={potForm.nilai || ""} onChange={e => setPotForm({ ...potForm, nilai: Number(e.target.value) })} /></div>
-              </div>
-              <ActionBar onTambah={handleTambahPot}
-                onUbah={() => { if (selectedPotIdx === null) { toast.error("Pilih potongan"); return; } setPotMode("edit"); }}
-                onHapus={handleHapusPot} onBatal={() => setPotMode("view")} onSimpan={handleSimpanPot} />
-            </div>
-          )}
+                    <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[11px] w-24 shrink-0">No SPP</Label>
+                        {mode === "add" ? (
+                          <Select value={spjForm.sppId} onValueChange={v => setSpjForm({ ...spjForm, sppId: v })}>
+                            <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih SPP Panjar Final" /></SelectTrigger>
+                            <SelectContent>
+                              {sppOptions.length === 0 ? <SelectItem value="__empty" disabled>Tidak ada SPP Panjar Final</SelectItem>
+                                : sppOptions.map(o => <SelectItem key={o.id} value={o.id} className="text-[11px]">{o.no} — Rp {fmt(o.jumlah)}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input className="h-7 text-[11px]" readOnly value={selectedSPJ?.nomorSPP || ""} />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[11px] w-24 shrink-0">No SPJ</Label>
+                        <Input className="h-7 text-[11px]" readOnly={mode === "view"}
+                          value={mode !== "view" ? spjForm.nomorSPJ : selectedSPJ?.nomorSPJ || ""}
+                          onChange={e => setSpjForm({ ...spjForm, nomorSPJ: e.target.value })} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[11px] w-24 shrink-0">Tgl SPJ</Label>
+                        <Input type="date" className="h-7 text-[11px]" readOnly={mode === "view"}
+                          value={mode !== "view" ? spjForm.tanggalSPJ : selectedSPJ?.tanggalSPJ || ""}
+                          onChange={e => setSpjForm({ ...spjForm, tanggalSPJ: e.target.value })} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[11px] w-24 shrink-0">Keterangan</Label>
+                        <Input className="h-7 text-[11px]" readOnly={mode === "view"}
+                          value={mode !== "view" ? spjForm.keterangan : selectedSPJ?.keterangan || ""}
+                          onChange={e => setSpjForm({ ...spjForm, keterangan: e.target.value })} />
+                      </div>
+                    </div>
+                    <ActionBar onTambah={handleTambahSPJ} onUbah={handleUbahSPJ} onHapus={handleHapusSPJ} onBatal={() => setMode("view")} onSimpan={handleSimpanSPJ} />
+                  </div>
+                )}
 
-          {/* ===== TAB: SISA PANJAR ===== */}
-          {activeTab === "sisa" && (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-auto border-b border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-secondary/60 text-[11px]">
-                      <TableHead>Tgl</TableHead>
-                      <TableHead>No SPJ</TableHead>
-                      <TableHead>Bukti Sisa</TableHead>
-                      <TableHead>Keterangan</TableHead>
-                      <TableHead className="text-right">Nominal</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(state.sisaPanjar || []).length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-xs">Belum ada bukti sisa panjar</TableCell></TableRow>
-                    ) : (state.sisaPanjar || []).map(s => (
-                      <TableRow key={s.id}
-                        className={`cursor-pointer text-[11px] ${selectedSisaId === s.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelectedSisaId(s.id); setSisaMode("view"); }}>
-                        <TableCell>{s.tanggal}</TableCell>
-                        <TableCell className="font-mono">{s.nomorSPJ}</TableCell>
-                        <TableCell className="font-mono">{s.buktiNo}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{s.keterangan}</TableCell>
-                        <TableCell className="text-right font-medium">{fmt(s.nominal)}</TableCell>
+                {/* ===== SUB-TAB: RINCIAN SPJ ===== */}
+                {activeSubTab === "rincian" && selectedSPJ && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px] flex items-center justify-between">
+                      <span><span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span> — {selectedSPJ.keterangan}</span>
+                      <span className="text-muted-foreground">Total Rincian: <span className="font-semibold text-foreground">Rp {fmt((selectedSPJ.rincianSPJ || []).reduce((s, r) => s + r.nilai, 0))}</span></span>
+                    </div>
+                    <div className="flex-1 overflow-auto border-b border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-secondary/60 text-[11px]">
+                            <TableHead>No.Ref</TableHead>
+                            <TableHead>Kode Rekening</TableHead>
+                            <TableHead>Nama Rincian</TableHead>
+                            <TableHead>Kegiatan</TableHead>
+                            <TableHead className="text-right">Nilai</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(selectedSPJ.rincianSPJ || []).length === 0 ? (
+                            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6 text-xs">Belum ada rincian</TableCell></TableRow>
+                          ) : (selectedSPJ.rincianSPJ || []).map(r => (
+                            <TableRow key={r.id}
+                              className={`cursor-pointer text-[11px] ${selectedRincianId === r.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
+                              onClick={() => { setSelectedRincianId(r.id); setRincianMode("view"); setRincianForm({ kodeRekening: r.kodeRekening, namaRekening: r.namaRekening, nilai: r.nilai, belanjaId: r.belanjaId, noRef: r.noRef || "", kodeKegiatan: r.kodeKegiatan || "", namaKegiatan: r.namaKegiatan || "" }); }}>
+                              <TableCell className="font-mono">{r.noRef || "-"}</TableCell>
+                              <TableCell className="font-mono">{r.kodeRekening}</TableCell>
+                              <TableCell>{r.namaRekening}</TableCell>
+                              <TableCell className="max-w-[180px] truncate" title={r.namaKegiatan}>{r.kodeKegiatan} {r.namaKegiatan ? `— ${r.namaKegiatan}` : ""}</TableCell>
+                              <TableCell className="text-right font-medium">{fmt(r.nilai)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
+                      <div className="col-span-2 flex items-center gap-2">
+                        <Label className="text-[11px] w-28 shrink-0">Pilih Rincian SPP</Label>
+                        <Select value={rincianForm.belanjaId || ""} disabled={rincianMode === "view"} onValueChange={v => {
+                          const opt = sppRincianOptions.find(o => o.id === v);
+                          if (opt) setRincianForm({
+                            kodeRekening: opt.kodeRekening, namaRekening: opt.namaRekening, nilai: opt.nilai,
+                            belanjaId: opt.id, noRef: opt.noRef || "", kodeKegiatan: opt.kodeKegiatan || "", namaKegiatan: opt.namaKegiatan || "",
+                          });
+                        }}>
+                          <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih baris dari Rincian SPP" /></SelectTrigger>
+                          <SelectContent>{sppRincianOptions.map(o => <SelectItem key={o.id} value={o.id} className="text-[11px]">[{o.noRef || "-"}] {o.kodeRekening} — {o.namaRekening}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Kode Rekening</Label>
+                        <Input className="h-7 text-[11px] font-mono" readOnly value={rincianForm.kodeRekening} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nama Rincian</Label>
+                        <Input className="h-7 text-[11px]" readOnly value={rincianForm.namaRekening} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Kegiatan</Label>
+                        <Input className="h-7 text-[11px]" readOnly value={`${rincianForm.kodeKegiatan || ""} ${rincianForm.namaKegiatan ? `— ${rincianForm.namaKegiatan}` : ""}`} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nilai</Label>
+                        <Input type="number" className="h-7 text-[11px] text-right" readOnly={rincianMode === "view"}
+                          value={rincianForm.nilai || ""} onChange={e => setRincianForm({ ...rincianForm, nilai: Number(e.target.value) })} /></div>
+                    </div>
+                    <ActionBar onTambah={handleTambahRincian}
+                      onUbah={() => { if (!selectedRincianId) { toast.error("Pilih rincian"); return; } setRincianMode("edit"); }}
+                      onHapus={handleHapusRincian} onBatal={() => setRincianMode("view")} onSimpan={handleSimpanRincian} />
+                  </div>
+                )}
+
+                {/* ===== SUB-TAB: KWITANSI ===== */}
+                {activeSubTab === "kwitansi" && selectedSPJ && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px]">
+                      <span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span>
+                    </div>
+                    <div className="flex-1 overflow-auto border-b border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-secondary/60 text-[11px]">
+                            <TableHead>Tgl</TableHead>
+                            <TableHead>No Bukti</TableHead>
+                            <TableHead>Keterangan</TableHead>
+                            <TableHead>Penerima</TableHead>
+                            <TableHead className="text-right">Jumlah</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(selectedSPJ.buktiKwitansi || []).length === 0 ? (
+                            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6 text-xs">Belum ada kwitansi</TableCell></TableRow>
+                          ) : (selectedSPJ.buktiKwitansi || []).map(b => (
+                            <TableRow key={b.id}
+                              className={`cursor-pointer text-[11px] ${selectedBuktiId === b.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
+                              onClick={() => { setSelectedBuktiId(b.id); setBuktiMode("view"); setBuktiForm({ tanggal: b.tanggal, noBukti: b.noBukti, keterangan: b.keterangan, jumlah: b.jumlah, penerima: b.penerima || "", nama: b.nama || "", alamat: b.alamat || "" }); }}>
+                              <TableCell>{b.tanggal}</TableCell>
+                              <TableCell className="font-mono">{b.noBukti}</TableCell>
+                              <TableCell className="max-w-[200px] truncate">{b.keterangan}</TableCell>
+                              <TableCell>{b.nama}</TableCell>
+                              <TableCell className="text-right font-medium">{fmt(b.jumlah)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Tanggal</Label>
+                        <Input type="date" className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.tanggal} onChange={e => setBuktiForm({ ...buktiForm, tanggal: e.target.value })} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">No Bukti</Label>
+                        <Input className="h-7 text-[11px] font-mono" readOnly={buktiMode === "view"} value={buktiForm.noBukti} onChange={e => setBuktiForm({ ...buktiForm, noBukti: e.target.value })} /></div>
+                      <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Keterangan</Label>
+                        <Input className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.keterangan} onChange={e => setBuktiForm({ ...buktiForm, keterangan: e.target.value })} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Penerima</Label>
+                        <Input className="h-7 text-[11px]" readOnly={buktiMode === "view"} value={buktiForm.nama} onChange={e => setBuktiForm({ ...buktiForm, nama: e.target.value, penerima: e.target.value })} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Jumlah</Label>
+                        <Input type="number" className="h-7 text-[11px] text-right" readOnly={buktiMode === "view"} value={buktiForm.jumlah || ""} onChange={e => setBuktiForm({ ...buktiForm, jumlah: Number(e.target.value) })} /></div>
+                    </div>
+                    <ActionBar onTambah={handleTambahBukti}
+                      onUbah={() => { if (!selectedBuktiId) { toast.error("Pilih kwitansi"); return; } setBuktiMode("edit"); }}
+                      onHapus={handleHapusBukti} onBatal={() => setBuktiMode("view")} onSimpan={handleSimpanBukti} />
+                  </div>
+                )}
+
+                {/* ===== SUB-TAB: POTONGAN ===== */}
+                {activeSubTab === "potongan" && selectedSPJ && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="px-4 py-2 border-b border-border bg-secondary/30 text-[11px] flex items-center justify-between">
+                      <span><span className="text-muted-foreground">SPJ:</span> <span className="font-mono font-semibold">{selectedSPJ.nomorSPJ}</span></span>
+                      <span className="text-[10px] text-muted-foreground italic">Otomatis terkirim ke Penyetoran Pajak</span>
+                    </div>
+                    <div className="flex-1 overflow-auto border-b border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-secondary/60 text-[11px]">
+                            <TableHead>Kode Rekening</TableHead>
+                            <TableHead>Nama Rekening</TableHead>
+                            <TableHead className="text-right">Nilai</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(selectedSPJ.potongan || []).length === 0 ? (
+                            <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6 text-xs">Belum ada potongan</TableCell></TableRow>
+                          ) : (selectedSPJ.potongan || []).map((p, i) => (
+                            <TableRow key={i}
+                              className={`cursor-pointer text-[11px] ${selectedPotIdx === i ? "bg-primary/10" : "hover:bg-muted/50"}`}
+                              onClick={() => { setSelectedPotIdx(i); setPotMode("view"); setPotForm({ ...p }); }}>
+                              <TableCell className="font-mono">{p.kodeRekening}</TableCell>
+                              <TableCell>{p.namaRekening}</TableCell>
+                              <TableCell className="text-right font-medium">{fmt(p.nilai)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
+                      <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Rekening Pajak</Label>
+                        <Select value={potForm.kodeRekening} disabled={potMode === "view"} onValueChange={v => {
+                          const r = rekeningPajak.find(x => x.kode === v);
+                          setPotForm({ ...potForm, kodeRekening: v, namaRekening: r?.uraian || "" });
+                        }}>
+                          <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih rekening pajak" /></SelectTrigger>
+                          <SelectContent>{rekeningPajak.map(r => <SelectItem key={r.kode} value={r.kode} className="text-[11px]">{r.kode} — {r.uraian}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nama Rekening</Label>
+                        <Input className="h-7 text-[11px]" readOnly value={potForm.namaRekening} /></div>
+                      <div className="flex items-center gap-2"><Label className="text-[11px] w-28 shrink-0">Nilai</Label>
+                        <Input type="number" className="h-7 text-[11px] text-right" readOnly={potMode === "view"} value={potForm.nilai || ""} onChange={e => setPotForm({ ...potForm, nilai: Number(e.target.value) })} /></div>
+                    </div>
+                    <ActionBar onTambah={handleTambahPot}
+                      onUbah={() => { if (selectedPotIdx === null) { toast.error("Pilih potongan"); return; } setPotMode("edit"); }}
+                      onHapus={handleHapusPot} onBatal={() => setPotMode("view")} onSimpan={handleSimpanPot} />
+                  </div>
+                )}
+              </>
+            ) : (
+              /* ===== MENU: SISA PANJAR ===== */
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto border-b border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-secondary/60 text-[11px]">
+                        <TableHead>Tgl</TableHead>
+                        <TableHead>No SPJ</TableHead>
+                        <TableHead>Bukti Sisa</TableHead>
+                        <TableHead>Keterangan</TableHead>
+                        <TableHead className="text-right">Nominal</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
-                <div className="flex items-center gap-2">
-                  <Label className="text-[11px] w-24 shrink-0">No SPJ</Label>
-                  {sisaMode !== "view" ? (
-                    <Select value={sisaForm.spjId} onValueChange={v => {
-                      const spj = (state.spjPanjar || []).find(s => s.id === v);
-                      setSisaForm({ ...sisaForm, spjId: v, nominal: spj?.sisa || 0, keterangan: spj ? `Sisa panjar ${spj.nomorSPJ}` : "" });
-                    }}>
-                      <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih SPJ Panjar" /></SelectTrigger>
-                      <SelectContent>
-                        {(state.spjPanjar || []).length === 0 ? <SelectItem value="__empty" disabled>Belum ada SPJ Panjar</SelectItem>
-                          : (state.spjPanjar || []).map(s => <SelectItem key={s.id} value={s.id} className="text-[11px]">{s.nomorSPJ} — sisa Rp {fmt(s.sisa)}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input className="h-7 text-[11px]" readOnly value={selectedSisa?.nomorSPJ || ""} />
-                  )}
+                    </TableHeader>
+                    <TableBody>
+                      {(state.sisaPanjar || []).length === 0 ? (
+                        <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8 text-xs">Belum ada bukti sisa panjar</TableCell></TableRow>
+                      ) : (state.sisaPanjar || []).map(s => (
+                        <TableRow key={s.id}
+                          className={`cursor-pointer text-[11px] ${selectedSisaId === s.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
+                          onClick={() => { setSelectedSisaId(s.id); setSisaMode("view"); }}>
+                          <TableCell>{s.tanggal}</TableCell>
+                          <TableCell className="font-mono">{s.nomorSPJ}</TableCell>
+                          <TableCell className="font-mono">{s.buktiNo}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{s.keterangan}</TableCell>
+                          <TableCell className="text-right font-medium">{fmt(s.nominal)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Bukti Sisa</Label>
-                  <Input className="h-7 text-[11px] font-mono" readOnly={sisaMode === "view"}
-                    value={sisaMode !== "view" ? sisaForm.buktiNo : selectedSisa?.buktiNo || ""}
-                    onChange={e => setSisaForm({ ...sisaForm, buktiNo: e.target.value })} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Tanggal</Label>
-                  <Input type="date" className="h-7 text-[11px]" readOnly={sisaMode === "view"}
-                    value={sisaMode !== "view" ? sisaForm.tanggal : selectedSisa?.tanggal || ""}
-                    onChange={e => setSisaForm({ ...sisaForm, tanggal: e.target.value })} /></div>
-                <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Nominal</Label>
-                  <Input type="number" className="h-7 text-[11px] text-right" readOnly={sisaMode === "view"}
-                    value={sisaMode !== "view" ? sisaForm.nominal || "" : selectedSisa?.nominal || ""}
-                    onChange={e => setSisaForm({ ...sisaForm, nominal: Number(e.target.value) })} /></div>
-                <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Keterangan</Label>
-                  <Input className="h-7 text-[11px]" readOnly={sisaMode === "view"}
-                    value={sisaMode !== "view" ? sisaForm.keterangan : selectedSisa?.keterangan || ""}
-                    onChange={e => setSisaForm({ ...sisaForm, keterangan: e.target.value })} /></div>
+                <div className="p-4 grid grid-cols-2 gap-x-8 gap-y-2 bg-muted/10">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[11px] w-24 shrink-0">No SPJ</Label>
+                    {sisaMode !== "view" ? (
+                      <Select value={sisaForm.spjId} onValueChange={v => {
+                        const spj = (state.spjPanjar || []).find(s => s.id === v);
+                        setSisaForm({ ...sisaForm, spjId: v, nominal: spj?.sisa || 0, keterangan: spj ? `Sisa panjar ${spj.nomorSPJ}` : "" });
+                      }}>
+                        <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="Pilih SPJ Panjar" /></SelectTrigger>
+                        <SelectContent>
+                          {(state.spjPanjar || []).length === 0 ? <SelectItem value="__empty" disabled>Belum ada SPJ Panjar</SelectItem>
+                            : (state.spjPanjar || []).map(s => <SelectItem key={s.id} value={s.id} className="text-[11px]">{s.nomorSPJ} — sisa Rp {fmt(s.sisa)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input className="h-7 text-[11px]" readOnly value={selectedSisa?.nomorSPJ || ""} />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Bukti Sisa</Label>
+                    <Input className="h-7 text-[11px] font-mono" readOnly={sisaMode === "view"}
+                      value={sisaMode !== "view" ? sisaForm.buktiNo : selectedSisa?.buktiNo || ""}
+                      onChange={e => setSisaForm({ ...sisaForm, buktiNo: e.target.value })} /></div>
+                  <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Tanggal</Label>
+                    <Input type="date" className="h-7 text-[11px]" readOnly={sisaMode === "view"}
+                      value={sisaMode !== "view" ? sisaForm.tanggal : selectedSisa?.tanggal || ""}
+                      onChange={e => setSisaForm({ ...sisaForm, tanggal: e.target.value })} /></div>
+                  <div className="flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Nominal</Label>
+                    <Input type="number" className="h-7 text-[11px] text-right" readOnly={sisaMode === "view"}
+                      value={sisaMode !== "view" ? sisaForm.nominal || "" : selectedSisa?.nominal || ""}
+                      onChange={e => setSisaForm({ ...sisaForm, nominal: Number(e.target.value) })} /></div>
+                  <div className="col-span-2 flex items-center gap-2"><Label className="text-[11px] w-24 shrink-0">Keterangan</Label>
+                    <Input className="h-7 text-[11px]" readOnly={sisaMode === "view"}
+                      value={sisaMode !== "view" ? sisaForm.keterangan : selectedSisa?.keterangan || ""}
+                      onChange={e => setSisaForm({ ...sisaForm, keterangan: e.target.value })} /></div>
+                </div>
+                <ActionBar onTambah={handleTambahSisa} onUbah={handleUbahSisa} onHapus={handleHapusSisa} onBatal={() => setSisaMode("view")} onSimpan={handleSimpanSisa} />
               </div>
-              <ActionBar onTambah={handleTambahSisa} onUbah={handleUbahSisa} onHapus={handleHapusSisa} onBatal={() => setSisaMode("view")} onSimpan={handleSimpanSisa} />
-            </div>
-          )}
+            )}
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
         </div>
       </div>

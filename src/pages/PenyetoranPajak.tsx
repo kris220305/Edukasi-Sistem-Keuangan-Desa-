@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type PenyetoranPajak as PenyetoranPajakItem } from "@/data/app-state";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,7 +102,7 @@ export default function PenyetoranPajak() {
     const count = state.penyetoranPajak.length + 1;
     setForm({
       tanggal: new Date().toISOString().split("T")[0],
-      noBukti: `${String(count).padStart(4, "0")}/SSP/05.2001/2024`,
+      noBukti: `${String(count).padStart(4, "0")}/SSP/05.2001/${getTahunAnggaran()}`,
       kodeRekening: "", kodeMAP: "", keterangan: "",
       jumlah: 0, ntpn: "", jenis: "tunai",
       namaWP: "", alamatWP: "", npwp: "", ttd: "",

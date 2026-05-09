@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type MutasiKasItem } from "@/data/app-state";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,7 +135,7 @@ export default function MutasiKas() {
             <h3 className="text-sm font-bold font-heading text-primary">Form Mutasi Kas</h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div><Label className="text-[11px]">Tanggal</Label><Input type="date" value={form.tanggal} onChange={e => setForm({...form, tanggal: e.target.value})} className="text-[11px] h-8" /></div>
-              <div><Label className="text-[11px]">No Bukti</Label><Input value={form.noBukti} onChange={e => setForm({...form, noBukti: e.target.value})} className="text-[11px] h-8" placeholder="0001/STS/05.2001/2024" /></div>
+              <div><Label className="text-[11px]">No Bukti</Label><Input value={form.noBukti} onChange={e => setForm({...form, noBukti: e.target.value})} className="text-[11px] h-8" placeholder={`0001/STS/05.2001/${getTahunAnggaran()}`} /></div>
               <div>
                 <Label className="text-[11px]">Jenis</Label>
                 <Select value={form.jenis} onValueChange={v => setForm({...form, jenis: v as 'setor' | 'ambil'})}>

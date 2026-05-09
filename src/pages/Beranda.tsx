@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import bgLandscape from "@/assets/bg-sawah-sunset.jpg";
 import { saveState, loadState } from "@/data/app-state";
 import { getDemoSeedData } from "@/data/demo-seed-data";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Database, Trash2 } from "lucide-react";
@@ -16,8 +17,13 @@ export default function Beranda() {
 
   return (
     <div className="h-full flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${bgLandscape})` }} />
+
       {/* Animated overlay gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-sidebar/30 via-transparent to-sidebar/50" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-sidebar/40 via-sidebar/10 to-sidebar/60 backdrop-blur-[2px]" />
 
       {/* Floating particles effect */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -116,7 +122,7 @@ export default function Beranda() {
         {/* Year badge */}
         <div className={`mt-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 transition-all duration-700 delay-[1100ms] ${loaded ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-          <span className="text-xs text-foreground/90 font-medium">Tahun Anggaran 2026</span>
+          <span className="text-xs text-foreground/90 font-medium">Tahun Anggaran {getTahunAnggaran()}</span>
         </div>
       </div>
 

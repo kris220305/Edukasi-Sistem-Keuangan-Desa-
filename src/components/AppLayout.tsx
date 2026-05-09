@@ -4,8 +4,15 @@ import TopMenuBar from "./TopMenuBar";
 import ScreenShareConsent from "./ScreenShareConsent";
 import ImpersonationBanner from "./ImpersonationBanner";
 import SyncStatus from "./SyncStatus";
+import DirtyStateBadge from "./DirtyStateBadge";
 import { useGroupRealtimeSync } from "@/hooks/use-group-realtime-sync";
 import bgLandscape from "@/assets/bg-sawah-sunset.jpg";
+
+function getTahun() {
+  try {
+    return JSON.parse(localStorage.getItem('siskeudes_desa_profile') || '{}').tahunAnggaran || new Date().getFullYear();
+  } catch { return new Date().getFullYear(); }
+}
 
 export default function AppLayout() {
   useGroupRealtimeSync();
@@ -61,8 +68,9 @@ export default function AppLayout() {
       {/* Footer */}
       <div className="relative z-10 border-t border-sidebar-border text-[10px] px-[17px] py-[7px] rounded-sm flex-row border-0 border-none flex items-center justify-between bg-sidebar/90 backdrop-blur-sm shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
         <span className="text-sidebar-foreground/80">© 2024 Sistem Pengelolaan Keuangan Desa for Education</span>
+        <DirtyStateBadge />
         <span className="text-sidebar-foreground/80">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        <span className="text-sidebar-foreground/80 font-medium">Tahun Anggaran 2026</span>
+        <span className="text-sidebar-foreground/80 font-medium">Tahun Anggaran {getTahun()}</span>
       </div>
     </div>);
 

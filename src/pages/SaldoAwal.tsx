@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import FormPageHeader from "@/components/FormPageHeader";
 import { trackFormProgress } from "@/lib/session-manager";
 import { loadState, saveState, type SaldoAwalItem } from "@/data/app-state";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,7 +78,7 @@ export default function SaldoAwal() {
 
   return (
     <div className="h-full flex flex-col">
-      <FormPageHeader title="Saldo Awal Kekayaan Desa" subtitle="Tahun Anggaran 2024" />
+      <FormPageHeader title="Saldo Awal Kekayaan Desa" subtitle={`Tahun Anggaran ${getTahunAnggaran()}`} />
 
       <div className="flex-1 p-4 flex flex-col gap-0 overflow-hidden">
         <div className="flex-1 border border-border rounded-md bg-card flex flex-col overflow-hidden">

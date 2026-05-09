@@ -4,6 +4,7 @@ import { trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
 import { loadState, saveState, type SPPItem, type SPPRincian, type BuktiTransaksi } from "@/data/app-state";
 import { getPembiayaanPengeluaranOptions } from "@/lib/financial-engine";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,8 +50,8 @@ export default function SPPPembiayaan() {
     setItems(allSpp);
   };
 
-  const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/2024`;
-  const generateNoBukti = () => `${String((selected?.buktiTransaksi.length || 0) + 1).padStart(5, "0")}/KWT/05.2001/2024`;
+  const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/${getTahunAnggaran()}`;
+  const generateNoBukti = () => `${String((selected?.buktiTransaksi.length || 0) + 1).padStart(5, "0")}/KWT/05.2001/${getTahunAnggaran()}`;
   const fmt = (n: number) => n.toLocaleString("id-ID", { minimumFractionDigits: 2 });
 
   // SPP Actions

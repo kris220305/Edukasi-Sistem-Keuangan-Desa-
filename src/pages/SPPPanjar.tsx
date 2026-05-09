@@ -4,6 +4,7 @@ import { trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
 import { loadState, saveState, type SPPItem, type SPPRincian, type BuktiTransaksi, type PotonganPajak } from "@/data/app-state";
 import { getBelanjaOptionsForKegiatan, getSisaBelanjaItem } from "@/lib/financial-engine";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { bidangKegiatanData } from "@/data/siskeudes-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,14 +30,6 @@ export default function SPPPanjar() {
   const [rincianForm, setRincianForm] = useState<Omit<SPPRincian, "id">>({ kodeRekening: "", namaRekening: "", nilai: 0, belanjaId: "", noRef: "", kodeKegiatan: "", kodeBidang: "", namaKegiatan: "" });
   const [pickedKegiatan, setPickedKegiatan] = useState<string>("");
 
-  const [buktiMode, setBuktiMode] = useState<Mode>("view");
-  const [selectedBukti, setSelectedBukti] = useState<BuktiTransaksi | null>(null);
-  const [buktiForm, setBuktiForm] = useState({ tanggal: "", noBukti: "", keterangan: "", jumlah: 0, penerima: "", nama: "", alamat: "", kodeBank: "", noRekBank: "", namaBank: "", npwp: "" });
-
-  const [potMode, setPotMode] = useState<Mode>("view");
-  const [selectedPot, setSelectedPot] = useState<PotonganPajak | null>(null);
-  const [potForm, setPotForm] = useState<PotonganPajak>({ kodeRekening: "", namaRekening: "", nilai: 0 });
-
   const rekeningBelanja = getRekeningDetail("belanja");
   const rekeningPajak = getRekeningDetail("non_anggaran");
 
@@ -55,8 +48,8 @@ export default function SPPPanjar() {
     setItems(allSpp);
   };
 
-  const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/2024`;
-  const generateNoBukti = () => `${String((selected?.buktiTransaksi.length || 0) + 1).padStart(5, "0")}/KWT/05.2001/2024`;
+  const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/${getTahunAnggaran()}`;
+  const generateNoBukti = () => `${String((selected?.buktiTransaksi.length || 0) + 1).padStart(5, "0")}/KWT/05.2001/${getTahunAnggaran()}`;
   const fmt = (n: number) => n.toLocaleString("id-ID", { minimumFractionDigits: 2 });
 
   // SPP Actions
@@ -128,43 +121,6 @@ export default function SPPPanjar() {
     return getBelanjaOptionsForKegiatan(loadState(), pickedKegiatan, rincianMode === "edit" ? selectedRincian?.id : undefined);
   }, [pickedKegiatan, items, rincianMode, selectedRincian]);
 
-  // Bukti Actions
-  const handleSimpanBukti = () => {
-    if (!selected || !buktiForm.noBukti) { toast.error("Lengkapi data bukti"); return; }
-    const newBukti: BuktiTransaksi = {
-      id: buktiMode === "edit" && selectedBukti ? selectedBukti.id : crypto.randomUUID(),
-      tanggal: buktiForm.tanggal, noBukti: buktiForm.noBukti, keterangan: buktiForm.keterangan,
-      jumlah: buktiForm.jumlah, penerima: buktiForm.penerima, nama: buktiForm.nama, alamat: buktiForm.alamat,
-      potonganPajak: buktiMode === "edit" && selectedBukti ? selectedBukti.potonganPajak : [],
-    };
-    let updBukti: BuktiTransaksi[];
-    if (buktiMode === "add") { updBukti = [...selected.buktiTransaksi, newBukti]; }
-    else { updBukti = selected.buktiTransaksi.map(b => b.id === selectedBukti?.id ? newBukti : b); }
-    const updated = items.map(i => i.id === selected.id ? { ...i, buktiTransaksi: updBukti } : i);
-    save(updated);
-    setSelected(updated.find(i => i.id === selected.id) || null);
-    setBuktiMode("view");
-    setSelectedBukti(null);
-    toast.success("Bukti transaksi disimpan");
-  };
-
-  // Potongan Actions
-  const handleSimpanPot = () => {
-    if (!selected || !selectedBukti || !potForm.kodeRekening) { toast.error("Lengkapi data potongan"); return; }
-    let updPot: PotonganPajak[];
-    if (potMode === "add") { updPot = [...selectedBukti.potonganPajak, potForm]; }
-    else { updPot = selectedBukti.potonganPajak.map((p, i) => i === selectedBukti.potonganPajak.indexOf(selectedPot!) ? potForm : p); }
-    const updBukti = selected.buktiTransaksi.map(b => b.id === selectedBukti.id ? { ...b, potonganPajak: updPot } : b);
-    const updated = items.map(i => i.id === selected.id ? { ...i, buktiTransaksi: updBukti } : i);
-    save(updated);
-    const newSelected = updated.find(i => i.id === selected.id) || null;
-    setSelected(newSelected);
-    setSelectedBukti(newSelected?.buktiTransaksi.find(b => b.id === selectedBukti.id) || null);
-    setPotMode("view");
-    setSelectedPot(null);
-    toast.success("Potongan pajak disimpan");
-  };
-
   const ActionBar = ({ onTambah, onUbah, onHapus, onBatal, onSimpan, onTutup }: { onTambah: () => void; onUbah: () => void; onHapus: () => void; onBatal: () => void; onSimpan: () => void; onTutup: () => void }) => (
     <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center gap-1">
       <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1" onClick={onTambah}><Plus size={12} />Tambah</Button>
@@ -219,8 +175,8 @@ export default function SPPPanjar() {
                     ) : items.map(item => (
                       <TableRow key={item.id}
                         className={`cursor-pointer text-[11px] ${selected?.id === item.id ? "bg-primary/10" : "hover:bg-muted/50"}`}
-                        onClick={() => { setSelected(item); setMode("view"); setSelectedBukti(null); }}
-                        onDoubleClick={() => { setSelected(item); setMode("view"); setSelectedBukti(null); setActiveTab("rincian"); }}>
+                        onClick={() => { setSelected(item); setMode("view"); }}
+                        onDoubleClick={() => { setSelected(item); setMode("view"); setActiveTab("rincian"); }}>
                         <TableCell>{item.tanggalSPP}</TableCell>
                         <TableCell className="font-mono">{item.nomorSPP}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{item.uraian}</TableCell>

@@ -4,6 +4,8 @@ import { trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
 import { sumberDanaData } from "@/data/siskeudes-data";
 import { loadState, saveState, type PendapatanItem } from "@/data/app-state";
+import { toast } from "sonner";
+import { showUndoToast, createUndoItem, addToUndoStack } from "@/lib/undo-helper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,10 +62,19 @@ export default function PendapatanDesa() {
 
   const handleHapus = () => {
     if (!selectedItem) return toast.error("Pilih data yang akan dihapus");
-    if (!confirm("Yakin hapus data ini?")) return;
-    save(items.filter(i => i.id !== selectedItem.id));
+    const deleted = selectedItem;
+    const remaining = items.filter(i => i.id !== selectedItem!.id);
+    save(remaining);
     setSelectedId(null);
-    toast.success("Data dihapus");
+    const undoItem = createUndoItem(deleted.id, "pendapatan", deleted);
+    addToUndoStack(undoItem);
+    showUndoToast("Data dihapus", undoItem, (undo) => {
+      const curr = loadState();
+      curr.pendapatan = [...curr.pendapatan, undo.item as PendapatanItem];
+      saveState(curr, true);
+      setItems(curr.pendapatan);
+      setSelectedId(undo.item.id);
+    });
   };
 
   const handleBatal = () => { setMode("view"); setForm(emptyForm); };

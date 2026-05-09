@@ -4,6 +4,7 @@ import { trackFormProgress } from "@/lib/session-manager";
 import { getRekeningDetail } from "@/data/rekening-data";
 import { loadState, saveState, type SPPItem, type SPPRincian, type BuktiTransaksi, type PotonganPajak } from "@/data/app-state";
 import { getBelanjaOptionsForKegiatan, getSisaBelanjaItem } from "@/lib/financial-engine";
+import { getTahunAnggaran } from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,11 +59,8 @@ export default function SPPDefinitif() {
     setItems(allItems);
   };
 
-  const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/2024`;
-  const generateNoBukti = () => {
-    const count = (selected?.buktiTransaksi.length || 0) + 1;
-    return `${String(count).padStart(5, "0")}/KWT/05.2001/2024`;
-  };
+  const generateNoSPP = () => `${String(items.length + 1).padStart(4, "0")}/SPP/05.2001/${getTahunAnggaran()}`;
+   const generateNoBukti = (count: number) => `${String(count).padStart(5, "0")}/KWT/05.2001/${getTahunAnggaran()}`;
 
   const fmt = (n: number) => n.toLocaleString("id-ID", { minimumFractionDigits: 2 });
 
@@ -376,7 +374,7 @@ export default function SPPDefinitif() {
                 </div>
               </div>
               <ActionBar
-                onTambah={() => { if (selected.isFinal) { toast.error("SPP sudah Final"); return; } setBuktiMode("add"); setSelectedBukti(null); setBuktiForm({ tanggal: new Date().toISOString().slice(0, 10), noBukti: generateNoBukti(), keterangan: "", jumlah: 0, penerima: "", nama: "", alamat: "", kodeBank: "", noRekBank: "", namaBank: "", npwp: "" }); }}
+                onTambah={() => { if (selected.isFinal) { toast.error("SPP sudah Final"); return; } setBuktiMode("add"); setSelectedBukti(null); setBuktiForm({ tanggal: new Date().toISOString().slice(0, 10), noBukti: generateNoBukti((selected?.buktiTransaksi.length || 0) + 1), keterangan: "", jumlah: 0, penerima: "", nama: "", alamat: "", kodeBank: "", noRekBank: "", namaBank: "", npwp: "" }); }}
                 onUbah={() => { if (!selectedBukti) { toast.error("Pilih bukti"); return; } setBuktiMode("edit"); setBuktiForm({ tanggal: selectedBukti.tanggal, noBukti: selectedBukti.noBukti, keterangan: selectedBukti.keterangan, jumlah: selectedBukti.jumlah, penerima: selectedBukti.penerima, nama: selectedBukti.nama, alamat: selectedBukti.alamat, kodeBank: "", noRekBank: "", namaBank: "", npwp: "" }); }}
                 onHapus={() => { if (!selectedBukti) return; if (selected.isFinal) { toast.error("SPP sudah Final"); return; } const upd = items.map(i => i.id === selected.id ? { ...i, buktiTransaksi: i.buktiTransaksi.filter(b => b.id !== selectedBukti.id) } : i); save(upd); setSelected(upd.find(i => i.id === selected.id) || null); setSelectedBukti(null); toast.success("Bukti dihapus"); }}
                 onBatal={() => { setBuktiMode("view"); setSelectedBukti(null); }}

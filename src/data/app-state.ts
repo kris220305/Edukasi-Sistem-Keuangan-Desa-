@@ -1,4 +1,5 @@
 import { upsertSession, getSessionId } from "@/lib/session-manager";
+import { addToOfflineQueue } from "@/lib/offline-queue";
 
 // Shared types and simple state manager using localStorage
 
@@ -323,7 +324,43 @@ export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
-    return { ...defaultState, ...parsed, __meta: parsed.__meta || {} };
+    const state: AppState = { ...defaultState, ...parsed, __meta: parsed.__meta || {} };
+
+    // Migration logic per client revision (one-time migration check)
+    let migrated = false;
+    if (state.spp && state.spp.length > 0) {
+      state.spp.forEach(spp => {
+        if (spp.jenis === 'panjar' && spp.buktiTransaksi && spp.buktiTransaksi.length > 0) {
+          // Find first SPJ for this SPP
+          const firstSpj = state.spjPanjar?.find(spj => spj.sppId === spp.id);
+          if (firstSpj) {
+            // If SPJ has no bukti yet, migrate them from SPP
+            if (!firstSpj.buktiKwitansi || firstSpj.buktiKwitansi.length === 0) {
+              firstSpj.buktiKwitansi = [...spp.buktiTransaksi];
+              
+              // Also migrate potongan to SPJ level if not present
+              const allPot = spp.buktiTransaksi.flatMap(bt => bt.potonganPajak || []);
+              if (allPot.length > 0 && (!firstSpj.potongan || firstSpj.potongan.length === 0)) {
+                firstSpj.potongan = allPot;
+              }
+              
+              // We keep bukti in SPP for safety/backward-compat as per plan, 
+              // but SPJ now owns them for the new UI.
+              migrated = true;
+            }
+          }
+        }
+      });
+    }
+
+    if (migrated) {
+      // If we did a migration, we should save it back to localStorage
+      // But we can't call saveState here as it would be circular/recursive.
+      // We'll just update localStorage directly.
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+    }
+
+    return state;
   } catch {
     return { ...defaultState };
   }
@@ -398,6 +435,11 @@ export function mergeStates(local: AppState, remote: Partial<AppState>): AppStat
     for (const key of Object.keys(remoteMeta)) {
       if (!key.startsWith(`${col}:`) || !key.endsWith('__deleted')) continue;
       const id = key.slice(col.length + 1, -('__deleted'.length));
+      
+      // Optimistic protection: if it's pending local, don't delete
+      const pending: Record<string, number> = JSON.parse(localStorage.getItem('siskeudes_pending_writes') || '{}');
+      if (pending[`${col}:${id}`]) continue;
+
       const w = winner(col, id);
       if (w === 'remote') map.delete(id);
     }
@@ -426,22 +468,27 @@ async function flushPush() {
     if (localStorage.getItem('siskeudes_admin_impersonate')) return;
     const serialized = JSON.stringify(state);
     if (serialized === lastPushedState) return;
-    
+
     window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "syncing" }));
-    
+
     lastPushedState = serialized;
     const payload = JSON.parse(serialized) as Record<string, unknown>;
     localStorage.setItem('siskeudes_last_local_write_at', String(Date.now()));
     await upsertSession({ form_data: payload });
-    
+
+    // Clear pending writes after successful sync
+    localStorage.removeItem('siskeudes_pending_writes');
+
     window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "saved" }));
-    // Reset to idle after a delay
+    window.dispatchEvent(new CustomEvent("siskeudes:dirty", { detail: false }));
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "idle" }));
     }, 2000);
   } catch (error) {
     console.error("Sync failed:", error);
     window.dispatchEvent(new CustomEvent("siskeudes:sync-status", { detail: "error" }));
+    window.dispatchEvent(new CustomEvent("siskeudes:dirty", { detail: true }));
+    await addToOfflineQueue("form_data", serialized);
   }
 }
 
@@ -458,12 +505,43 @@ export function saveState(state: AppState, immediate = false) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   try { localStorage.setItem('siskeudes_app_state', JSON.stringify(next)); } catch { /* ignore */ }
 
+  // Track pending writes for optimistic restore during merge
+  try {
+    const pending: Record<string, number> = JSON.parse(localStorage.getItem('siskeudes_pending_writes') || '{}');
+    const now = Date.now();
+    for (const col of COLLECTIONS) {
+      const arr = (next[col] as { id: string }[] | undefined) || [];
+      arr.forEach(item => {
+        pending[`${col}:${item.id}`] = now;
+      });
+    }
+    localStorage.setItem('siskeudes_pending_writes', JSON.stringify(pending));
+  } catch(e) {}
+
   pendingState = next;
   if (pushTimer) clearTimeout(pushTimer);
-  
+
+  window.dispatchEvent(new CustomEvent("siskeudes:dirty", { detail: true }));
+
   if (immediate) {
     flushPush();
   } else {
-    pushTimer = setTimeout(flushPush, 1200);
+    pushTimer = setTimeout(flushPush, 200);
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    import('@/lib/offline-queue').then(({ flushOfflineQueue }) => {
+      flushOfflineQueue(async (payload: string) => {
+        const data = JSON.parse(payload);
+        await upsertSession({ form_data: data });
+      }).then(({ flushed, failed }) => {
+        if (flushed > 0) {
+          window.dispatchEvent(new CustomEvent('siskeudes:sync-status', { detail: 'saved' }));
+          window.dispatchEvent(new CustomEvent('siskeudes:dirty', { detail: failed > 0 }));
+        }
+      });
+    });
+  });
 }

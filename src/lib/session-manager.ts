@@ -26,18 +26,30 @@ async function apiRequest<T>(path: string, init?: RequestInit, retries = 2): Pro
   let lastError: any;
   
   for (let i = 0; i <= retries; i++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
     try {
       const response = await fetch(path, {
         ...init,
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           ...(init?.headers || {}),
         },
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text || `API request failed with status ${response.status}`);
+        let errorData;
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          errorData = { error: text };
+        }
+        throw new Error(errorData.error || `API request failed with status ${response.status}`);
       }
 
       if (response.status === 204) {
@@ -47,10 +59,14 @@ async function apiRequest<T>(path: string, init?: RequestInit, retries = 2): Pro
       const text = await response.text();
       return (text ? JSON.parse(text) : undefined) as T;
     } catch (error) {
+      clearTimeout(timeoutId);
       lastError = error;
-      // If it's a network error, wait a bit and retry
+      
+      const isTimeout = error instanceof Error && error.name === 'AbortError';
+      
+      // If it's a network error or timeout, wait a bit and retry
       if (i < retries) {
-        const delay = Math.pow(2, i) * 1000;
+        const delay = Math.pow(2, i) * 800;
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }

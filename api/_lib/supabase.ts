@@ -26,9 +26,7 @@ export function getSupabaseAdmin() {
 }
 
 export function sendJson(res: any, status: number, data: unknown) {
-  res.status(status);
-  res.setHeader("Content-Type", "application/json");
-  res.send(JSON.stringify(data));
+  res.status(status).json(data);
 }
 
 export function getQueryValue(value: string | string[] | undefined): string | undefined {

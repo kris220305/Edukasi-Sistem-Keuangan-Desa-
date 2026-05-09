@@ -87,9 +87,12 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const check = async () => {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-      
       try {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          setChecking(false);
+          return;
+        }
+        
         const settings = await getSiteSettings();
         if (settings?.is_locked) {
           setLocked(true);
@@ -112,7 +115,7 @@ export default function SiteLockGuard({ children }: { children: React.ReactNode 
         setMaxReached(false);
       } catch (error) {
         console.error("Site lock check failed:", error);
-        // Fail open so the app still loads if Supabase is slow or unreachable.
+        // Fail open so the app still loads if API is down
         setLocked(false);
         setMaxReached(false);
       } finally {
